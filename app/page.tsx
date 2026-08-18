@@ -232,7 +232,7 @@ export default function HomePage() {
       <section className="relative py-20 px-4">
         <div className="container mx-auto max-w-4xl text-center">
           <h1 className="font-bold text-4xl md:text-6xl text-foreground mb-6 leading-tight font-sans tracking-tight">
-            Find the perfect kennel. <br />Stress free.
+            Find the perfect kennel. <br />Completely stress free.
           </h1>
           <p className="text-xl text-muted-foreground mb-12 max-w-2xl mx-auto leading-relaxed">
             Quickly discover and book <span className="font-bold text-accent">trusted</span> kennels with our UK-wide directory.
