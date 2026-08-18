@@ -1,6 +1,8 @@
 import type React from "react"
 import type { Metadata } from "next"
 import { Playfair_Display, Source_Sans_3 } from "next/font/google"
+import { Analytics } from "@vercel/analytics/next"
+import { Toaster } from "@/components/ui/toaster"
 import "./globals.css"
 
 const playfairDisplay = Playfair_Display({
@@ -29,7 +31,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className={`${playfairDisplay.variable} ${sourceSans.variable}`}>
+    <html lang="en-GB" className={`${playfairDisplay.variable} ${sourceSans.variable}`}>
       <head>
         <script
           dangerouslySetInnerHTML={{
@@ -58,6 +60,8 @@ export default function RootLayout({
           />
         </noscript>
         {children}
+        <Toaster />
+        <Analytics />
       </body>
     </html>
   )

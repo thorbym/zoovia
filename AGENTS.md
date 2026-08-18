@@ -1,0 +1,152 @@
+# AGENTS.md — Zoovia
+
+Codex: read this first. If anything conflicts with my prompt, ask a single clarifying question OR follow my prompt.
+
+## 1) What we're building (one sentence)
+Zoovia is a two-sided marketplace for UK dog kennel boarding: kennel operators on the supply side, dog owners on the demand side, built phase by phase.
+
+## 2) Current focus
+We are building **Phase 1 (Listings Foundation)** and **Phase 2 (Enquiry Management)**.
+
+See `EPICS.md` for the five epics covering these two phases. See `PRODUCT.md` for the full six-phase roadmap.
+
+## 3) Scope boundary for current phases
+
+### In scope (Phase 1 & 2)
+- Kennel profile pages (seeded from AAL register data, claimable by operators)
+- Claim-your-listing flow (identity verification, profile enrichment)
+- Public booking enquiry form per kennel (the intake form already built)
+- Enquiry inbox: list, detail, status transitions (new / needs-info / accepted / rejected)
+- Dog and owner profiles created at point of enquiry
+- Email notifications (to operator on new enquiry; to owner on status change)
+- Internal notes on enquiries
+
+### Out of scope (do not build yet)
+- Payments, deposits, invoicing
+- Online booking with instant confirmation
+- Live availability calendar exposed to dog owners
+- AAL compliance records (vaccination log, incident log)
+- WhatsApp integration
+- Staff rota, active stay management
+- Roles/permissions, multi-user teams
+- Data migration tools
+- Anything in Phases 3–6
+
+Rule of thumb: if it would appear on the Phase 3–6 roadmap in `PRODUCT.md`, it is out of scope now.
+
+## 4) Product rules
+- Prefer boring, reliable, minimal workflows.
+- Manual processes are acceptable if they validate value.
+- Never add a feature unless it (a) reduces inbound chaos, or (b) increases operator willingness to pay.
+
+## 5) Execution policy
+When asked for multi-step work:
+- Use the template in `PLANS.md` to create a concrete plan, then implement.
+- Keep changes small; ship vertical slices.
+- Reset `PLANS.md` to template when complete.
+
+Definition of done for any change:
+- Tests added/updated for all new or changed behaviour, and all required test commands executed successfully
+- Lints/format passes
+- No PII in logs
+- README/PRODUCT updated if behaviour changes
+- RLS policies updated/validated for any new table or access path
+
+## 6) Testing & quality gates (non-negotiable)
+
+Tests are part of the feature. No new functionality is complete without them.
+
+### Mandatory rules
+- For **any new functionality or behaviour change**, add or update tests.
+- For **any bug fix**, add a regression test that would fail without the fix.
+- For **any API route, server action, Supabase query, or RLS policy**, add at least one integration test (or explicitly justify why it is impractical).
+
+### Required test execution
+After any code change, run:
+
+1) `pnpm lint`
+2) `pnpm test`
+
+If the change touches **data access, auth, routing, or backend logic**, also run:
+3) `pnpm test:integration`
+
+If the change affects a **core user flow** (enquiry submission, inbox triage):
+4) `pnpm e2e`
+
+Work is not complete if any required command fails.
+
+### Handling failures
+- If tests fail due to your changes, fix them before proceeding.
+- If failures are pre-existing or flaky, document this clearly and propose a fix in the PR summary.
+
+### Output expectations
+Every PR or change summary must include a **Verification** section stating:
+- Which test commands were run
+- What tests were added or updated
+- Any remaining known risks
+
+## 7) Tech choices
+
+Default stack:
+- Next.js (App Router) + TypeScript
+- Hosting: Vercel
+- Database: Supabase Postgres
+- ORM: none (NO Prisma)
+- Data access: Supabase JS client
+- Auth: Supabase Auth for kennel operator accounts
+- Authorization: Supabase Row Level Security (RLS) from day one
+- Email: Resend (or equivalent) via a small provider interface
+
+Rules:
+- Never use Prisma in this project.
+- Do not connect directly to Postgres from Vercel functions; use Supabase JS client.
+- Use `SUPABASE_SERVICE_ROLE_KEY` only in server-side code (route handlers / server actions).
+- Use `SUPABASE_ANON_KEY` for client-side reads/writes governed by RLS.
+
+## 8) Security & privacy (non-negotiable)
+We store owner and dog details strictly to:
+- Process booking enquiries
+- Enable repeat bookings with less friction
+
+We do NOT use stored data for:
+- Marketing
+- Cross-kennel promotion
+- Behavioural profiling
+
+Rules:
+- Treat all inputs as sensitive.
+- Do not log PII (emails, phone numbers, notes, vaccination dates).
+- Vaccination data is date-only (no document uploads in Phase 1/2).
+- Internal notes must not be framed as medical records.
+
+Any reuse beyond enquiry processing and rebooking requires explicit user consent.
+
+## 9) Data model (current phases)
+
+**Phase 1:**
+- `Listing` — seeded kennel profile (name, location, AAL licence number, star rating, website)
+- `ClaimedProfile` — operator-enriched profile linked to a verified Listing
+
+**Phase 2:**
+- `Kennel` — operator account and settings
+- `CapacitySettings` — max_dogs_by_size, blackout_dates
+- `BookingEnquiry` — dates, status (new / needs-info / accepted / rejected), timestamps
+- `Dog` — name, breed, size_category, vaccination_expiry_date, internal_notes
+- `Owner` — name, email, phone
+- `InternalNote` — free text, private to kennel
+
+## 10) Common commands
+- Install: `pnpm i`
+- Dev: `pnpm dev`
+- Test: `pnpm test`
+- Lint: `pnpm lint`
+
+Create `test:integration` and `e2e` scripts if missing; keep them passing.
+
+## 11) Style
+- Small functions, explicit naming, no clever abstractions.
+- Prefer server actions / route handlers that are easy to test.
+- Always include "why" in comments for business rules.
+
+## 12) If uncertain
+Ask exactly one question; otherwise choose the simplest approach consistent with this file.
