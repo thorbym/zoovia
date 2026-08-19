@@ -138,4 +138,6 @@ Rationale:
 The form represents investment — a user who has filled it is far more likely to complete sign-up than a user shown a gate on arrival. This is a standard pattern for conversion-optimised marketplace onboarding.
 
 Consequences:
-The enquiry form must hold state across the sign-up flow (e.g. via sessionStorage or a URL param). The `user_id` on `dogs` and `booking_requests` is only set on successful sign-up and submission — there is no anonymous submission path.
+The enquiry form must hold state across the sign-up flow. The `user_id` on `dogs` and `booking_requests` is only set on successful sign-up and submission — there is no anonymous submission path.
+
+Implemented 2026-08-19 in `components/booking-form.tsx`: the sign-up/sign-in step renders inline in the same component (no navigation), so form state is held in React state rather than sessionStorage/a URL param. `/api/public/bookings` requires a verified user (session cookie or Bearer token) before it will write.

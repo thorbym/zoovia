@@ -57,8 +57,17 @@ async function main() {
   // Track slugs used in this run to handle duplicates within the CSV itself
   const slugCounts: Record<string, number> = {}
 
+  const skipped: string[] = []
+
   const organisations = rows
     .filter((row) => row.name?.trim())
+    .filter((row) => {
+      if (!row.postalCode?.trim()) {
+        skipped.push(row.name.trim())
+        return false
+      }
+      return true
+    })
     .map((row) => {
       const name = row.name.trim()
       const locality = (row.addressLocality ?? "").trim()
@@ -85,6 +94,11 @@ async function main() {
         is_claimed:      false,
       }
     })
+
+  if (skipped.length) {
+    console.log(`Skipping ${skipped.length} rows with no postcode (organisations.postcode is not null):`)
+    skipped.forEach((name) => console.log(`  - ${name}`))
+  }
 
   console.log(`Seeding ${organisations.length} organisations...`)
 

@@ -136,17 +136,26 @@ Any reuse beyond enquiry processing and rebooking requires explicit user consent
 - `dogs` — name, breed, size_category, vaccination_expiry_date, internal_notes. FKs → user_profiles (the owner's account) + organisations.
 - `internal_notes` — free text, private to the organisation. FKs → organisations + booking_requests.
 
-Dog owners are `user_profiles` records with type='owner'. There is no separate `owners` table. Dog owners must sign up to submit an enquiry; the sign-up gate appears after the form is filled, not before. See DECISIONS.md for the two ADRs covering this.
+Dog owners are `user_profiles` records with type='owner'. There is no separate `owners` table. Dog owners must sign up to submit an enquiry; the sign-up gate appears after the form is filled, not before (implemented in `components/booking-form.tsx`). See DECISIONS.md for the two ADRs covering this.
 
 All tables use `org_id` as the FK to organisations. Never `kennel_id`.
+
+**Gotchas worth knowing before touching this schema again (app code was fully migrated 2026-08-19, see that commit):**
+- `user_profiles.id` IS the `auth.users` id (primary key references it directly) — there is no separate `user_id` column. Query a caller's own profile with `.eq("id", user.id)`, not `.eq("user_id", user.id)`.
+- Owner email lives only in `auth.users`, never in `user_profiles`. Reading it server-side requires `supabase.auth.admin.getUserById()` on a service-role client.
+- RLS has no policy letting an operator read another user's `user_profiles` row directly (only `auth.uid() = id`). Staff routes that need owner name/phone/email (dogs list, owner detail, request detail/list) authorize the caller with the RLS-bound client first, then read cross-owner data with the service-role client.
+- `dogs` has a `unique (user_id, name)` constraint — a dog's identity is scoped to its owner, not to the org. The same dog name enquiring at a second kennel will move that dog's `org_id`, not create a second row.
+- `user_profiles` has no `role` column (team roles are Phase 3, out of scope) and `organisations` has no `notify_*` columns (email sending, EP-03 F5/F6, isn't built yet). Don't reintroduce either without a schema change.
+- `booking_requests` has no `contact_opt_in` column.
+- `organisations.postcode` is `not null`. `scripts/seed-organisations.ts` upserts in batches of 100 — one row with a blank postcode fails the *whole batch*, not just that row (filtered out with a warning before batching, as of 2026-08-19). `organisations` is seeded (1,222 rows, from `scripts/data/kennels.csv`, gitignored — not in the repo).
 
 ## 10) Common commands
 - Install: `pnpm i`
 - Dev: `pnpm dev`
 - Test: `pnpm test`
-- Lint: `pnpm lint`
+- Lint: `pnpm lint` *(currently broken — Next 16 removed `next lint`; no replacement wired up yet)*
 
-Create `test:integration` and `e2e` scripts if missing; keep them passing.
+Create `test:integration` and `e2e` scripts if missing; keep them passing. **There is currently no test suite in this repo at all**, despite §6 above — a known, unaddressed gap, not a green baseline to assume. `next.config.mjs` also sets `typescript.ignoreBuildErrors: true` to work around a `@supabase/supabase-js` v2.45 generic-inference bug that otherwise floods `tsc` with spurious `does not exist on type 'never'` errors on every Supabase query — pre-existing, not a signal of real type errors.
 
 ## 11) Style
 - Small functions, explicit naming, no clever abstractions.
