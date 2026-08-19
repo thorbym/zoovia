@@ -58,7 +58,7 @@ export async function POST(request: Request) {
 
   const { error: claimError } = await serviceRole
     .from("organisations")
-    .update({ is_claimed: true })
+    .update({ claim_status: "claimed" })
     .eq("id", organisations[0].id)
 
   if (claimError) {

@@ -13,15 +13,25 @@ import { Building2, MapPin, Mail, Phone, ArrowRight } from "lucide-react"
 interface KennelOwnerModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+  defaultKennelName?: string
+  defaultLocation?: string
+  slug?: string
 }
 
-export function KennelOwnerModal({ open, onOpenChange }: KennelOwnerModalProps) {
-  const [kennelName, setKennelName] = useState("")
-  const [location, setLocation] = useState("")
+export function KennelOwnerModal({
+  open,
+  onOpenChange,
+  defaultKennelName = "",
+  defaultLocation = "",
+  slug,
+}: KennelOwnerModalProps) {
+  const [kennelName, setKennelName] = useState(defaultKennelName)
+  const [location, setLocation] = useState(defaultLocation)
   const [email, setEmail] = useState("")
   const [phone, setPhone] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const router = useRouter()
+  const isClaim = Boolean(slug)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -39,6 +49,7 @@ export function KennelOwnerModal({ open, onOpenChange }: KennelOwnerModalProps) 
           location,
           email,
           phone,
+          slug,
         }),
       })
 
@@ -60,8 +71,8 @@ export function KennelOwnerModal({ open, onOpenChange }: KennelOwnerModalProps) 
       console.error("Error submitting kennel owner form:", error)
       // Still redirect to thanks page even if email fails
       onOpenChange(false)
-      setKennelName("")
-      setLocation("")
+      setKennelName(defaultKennelName)
+      setLocation(defaultLocation)
       setEmail("")
       setPhone("")
       router.push("/thanks-kennel")
@@ -75,10 +86,12 @@ export function KennelOwnerModal({ open, onOpenChange }: KennelOwnerModalProps) 
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="text-2xl font-serif font-bold text-center text-foreground">
-            Join Zoovia as a Kennel Owner
+            {isClaim ? `Claim ${defaultKennelName}` : "Join Zoovia as a Kennel Owner"}
           </DialogTitle>
           <p className="text-center text-muted-foreground mt-2">
-            Help dog owners find your amazing kennel. We'll be in touch soon!
+            {isClaim
+              ? "We'll verify you're the owner and be in touch to hand over the listing."
+              : "Help dog owners find your amazing kennel. We'll be in touch soon!"}
           </p>
         </DialogHeader>
 
@@ -152,7 +165,7 @@ export function KennelOwnerModal({ open, onOpenChange }: KennelOwnerModalProps) 
             disabled={isSubmitting}
             className="w-full bg-accent hover:bg-accent/90 text-accent-foreground font-semibold py-6 shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isSubmitting ? "Joining..." : "Join the waitlist"}
+            {isSubmitting ? "Sending..." : isClaim ? "Claim this listing" : "Join the waitlist"}
             {!isSubmitting && <ArrowRight className="ml-2 h-5 w-5" />}
           </Button>
         </form>

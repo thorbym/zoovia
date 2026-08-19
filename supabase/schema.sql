@@ -15,27 +15,32 @@ drop table if exists public.staff_profiles cascade;
 drop table if exists public.kennels cascade;
 drop type if exists public.booking_status cascade;
 drop type if exists public.availability_signal cascade;
+drop type if exists public.claim_status cascade;
 
 -- ============================================================
 -- Core: organisations + user profiles
 -- ============================================================
 
+create type public.claim_status as enum ('unclaimed', 'pending_verification', 'claimed', 'rejected');
+
 -- organisations — the canonical business record.
 -- Exists before any operator claims it (seeded from AAL register data).
 create table public.organisations (
-  id             uuid        primary key default gen_random_uuid(),
-  name           text        not null,
-  slug           text        not null unique,
+  id             uuid          primary key default gen_random_uuid(),
+  name           text          not null,
+  slug           text          not null unique,
   licence_region text,
   street_address text,
   locality       text,
   region         text,
-  postcode       text        not null,
+  postcode       text          not null,
   telephone      text,
   contact_email  text,
   website        text,
-  is_claimed     boolean     not null default false,
-  created_at     timestamptz not null default now(),
+  latitude       numeric,
+  longitude      numeric,
+  claim_status   public.claim_status not null default 'unclaimed',
+  created_at     timestamptz   not null default now(),
   updated_at     timestamptz not null default now()
 );
 
@@ -127,7 +132,7 @@ create table public.internal_notes (
 
 create index idx_organisations_postcode  on public.organisations (postcode);
 create index idx_organisations_region    on public.organisations (region);
-create index idx_organisations_claimed   on public.organisations (is_claimed);
+create index idx_organisations_claimed   on public.organisations (claim_status);
 create index idx_user_profiles_org       on public.user_profiles (org_id);
 create index idx_dogs_user               on public.dogs (user_id);
 create index idx_dogs_org                on public.dogs (org_id);

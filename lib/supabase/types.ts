@@ -6,6 +6,8 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
+export type ClaimStatus = "unclaimed" | "pending_verification" | "claimed" | "rejected"
+
 export interface Database {
   public: {
     Tables: {
@@ -22,7 +24,9 @@ export interface Database {
           telephone: string | null
           contact_email: string | null
           website: string | null
-          is_claimed: boolean
+          latitude: number | null
+          longitude: number | null
+          claim_status: ClaimStatus
           created_at: string
           updated_at: string
         }
@@ -38,7 +42,9 @@ export interface Database {
           telephone?: string | null
           contact_email?: string | null
           website?: string | null
-          is_claimed?: boolean
+          latitude?: number | null
+          longitude?: number | null
+          claim_status?: ClaimStatus
           created_at?: string
           updated_at?: string
         }
@@ -54,7 +60,9 @@ export interface Database {
           telephone?: string | null
           contact_email?: string | null
           website?: string | null
-          is_claimed?: boolean
+          latitude?: number | null
+          longitude?: number | null
+          claim_status?: ClaimStatus
           created_at?: string
           updated_at?: string
         }

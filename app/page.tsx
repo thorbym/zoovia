@@ -4,6 +4,7 @@ import type React from "react"
 import type { google } from "googlemaps"
 
 import { useState, useEffect, useRef } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -20,6 +21,7 @@ interface NominatimResult {
 }
 
 export default function HomePage() {
+  const router = useRouter()
   const [location, setLocation] = useState("")
   const [checkIn, setCheckIn] = useState("")
   const [checkOut, setCheckOut] = useState("")
@@ -91,7 +93,8 @@ export default function HomePage() {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
-    setShowWaitlist(true)
+    if (!location.trim()) return
+    router.push(`/kennels?q=${encodeURIComponent(location.trim())}`)
   }
 
   /*

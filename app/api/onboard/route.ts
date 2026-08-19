@@ -40,7 +40,7 @@ export async function POST(request: Request) {
       contact_email: body.email,
       postcode: body.postcode,
       telephone: body.phone ?? null,
-      is_claimed: true,
+      claim_status: "claimed",
     })
     .select("id, name, slug")
     .single()

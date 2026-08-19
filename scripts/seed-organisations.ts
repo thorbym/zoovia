@@ -1,6 +1,7 @@
 import fs from "fs"
 import path from "path"
 import { createClient } from "@supabase/supabase-js"
+import { backfillOrganisationCoordinates } from "./lib/geocode"
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -91,7 +92,7 @@ async function main() {
         postcode:        row.postalCode?.trim()       || null,
         telephone:       row.telephone?.trim()        || null,
         contact_email:   row.email?.trim()            || null,
-        is_claimed:      false,
+        claim_status:    "unclaimed" as const,
       }
     })
 
@@ -123,6 +124,8 @@ async function main() {
   }
 
   console.log(`\nDone. ${inserted} upserted, ${errors} errors.`)
+
+  await backfillOrganisationCoordinates(supabase)
 }
 
 main()

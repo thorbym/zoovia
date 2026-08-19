@@ -1,166 +1,79 @@
 # AGENTS.md — Zoovia
 
-Codex: read this first. If anything conflicts with my prompt, ask a single clarifying question OR follow my prompt.
+Read this first. If anything here conflicts with my prompt, ask a single clarifying question OR follow my prompt.
 
-## 1) What we're building (one sentence)
+## 1) What we're building
 Zoovia is a two-sided marketplace for UK dog kennel boarding: kennel operators on the supply side, dog owners on the demand side, built phase by phase.
 
-## 2) Current focus
-We are building **Phase 1 (Listings Foundation)** and **Phase 2 (Enquiry Management)**.
+Current focus: **Phase 1 (Listings Foundation)** and **Phase 2 (Enquiry Management)** — EP-01 to EP-05 in `EPICS.md`. Full roadmap in `PRODUCT.md`.
 
-See `EPICS.md` for the five epics covering these two phases. See `PRODUCT.md` for the full six-phase roadmap.
+## 2) Scope boundary
+In scope: kennel profile pages seeded from AAL register data, claim-your-listing flow, public enquiry form, enquiry inbox (list / detail / status transitions), dog and owner profiles created at enquiry, notification emails, internal notes.
 
-## 3) Scope boundary for current phases
+Out of scope: anything on the Phase 3–6 roadmap in `PRODUCT.md` — payments, instant booking, availability calendar, AAL compliance records, WhatsApp, rota/stay management, team roles and permissions, data migration tools.
 
-### In scope (Phase 1 & 2)
-- Kennel profile pages (seeded from AAL register data, claimable by operators)
-- Claim-your-listing flow (identity verification, profile enrichment)
-- Public booking enquiry form per kennel (the intake form already built)
-- Enquiry inbox: list, detail, status transitions (new / needs-info / accepted / rejected)
-- Dog and owner profiles created at point of enquiry
-- Email notifications (to operator on new enquiry; to owner on status change)
-- Internal notes on enquiries
-
-### Out of scope (do not build yet)
-- Payments, deposits, invoicing
-- Online booking with instant confirmation
-- Live availability calendar exposed to dog owners
-- AAL compliance records (vaccination log, incident log)
-- WhatsApp integration
-- Staff rota, active stay management
-- Roles/permissions, multi-user teams
-- Data migration tools
-- Anything in Phases 3–6
-
-Rule of thumb: if it would appear on the Phase 3–6 roadmap in `PRODUCT.md`, it is out of scope now.
-
-## 4) Product rules
-- Prefer boring, reliable, minimal workflows.
-- Manual processes are acceptable if they validate value.
+## 3) Product rules
+- Prefer boring, reliable, minimal workflows. Manual processes are fine if they validate value.
 - Never add a feature unless it (a) reduces inbound chaos, or (b) increases operator willingness to pay.
 
-## 5) Execution policy
-When asked for multi-step work:
-- Use the template in `PLANS.md` to create a concrete plan, then implement.
-- Keep changes small; ship vertical slices.
-- Reset `PLANS.md` to template when complete.
+## 4) Execution policy
+For multi-step work: plan in `PLANS.md` using its template, implement, then reset `PLANS.md`. Keep changes small; ship vertical slices.
 
-Definition of done for any change:
-- Tests added/updated for all new or changed behaviour, and all required test commands executed successfully
-- Lints/format passes
-- No PII in logs
-- README/PRODUCT updated if behaviour changes
+Definition of done:
+- Tests added/updated for new or changed behaviour, and the required test commands below run clean
+- Lint/format passes; no PII in logs
 - RLS policies updated/validated for any new table or access path
+- `PRODUCT.md` / `EPICS.md` updated if behaviour or scope changes
 
-## 6) Testing & quality gates (non-negotiable)
+## 5) Testing gates (non-negotiable)
+Tests are part of the feature. Any behaviour change gets a test; any bug fix gets a regression test that would fail without it; any API route, server action, Supabase query, or RLS policy gets at least one integration test (or an explicit justification why not).
 
-Tests are part of the feature. No new functionality is complete without them.
+Run after any code change: `pnpm lint`, `pnpm test`. Add `pnpm test:integration` for data access, auth, routing, or backend logic. Add `pnpm test:e2e` for core user flows (enquiry submission, inbox triage). Work is not complete if a required command fails — fix your own breakage; document pre-existing or flaky failures in the change summary.
 
-### Mandatory rules
-- For **any new functionality or behaviour change**, add or update tests.
-- For **any bug fix**, add a regression test that would fail without the fix.
-- For **any API route, server action, Supabase query, or RLS policy**, add at least one integration test (or explicitly justify why it is impractical).
+Every change summary needs a **Verification** section: commands run, tests added/updated, remaining risks.
 
-### Required test execution
-After any code change, run:
+## 6) Tech choices
+Next.js (App Router) + TypeScript on Vercel; Supabase Postgres via the Supabase JS client; Supabase Auth for operator accounts; RLS from day one; Resend (or equivalent) behind a small provider interface.
 
-1) `pnpm lint`
-2) `pnpm test`
+- No ORM. **Never use Prisma.**
+- Never connect directly to Postgres from Vercel functions — use the Supabase JS client.
+- `SUPABASE_SERVICE_ROLE_KEY` server-side only (route handlers / server actions). `SUPABASE_ANON_KEY` for client-side access governed by RLS.
 
-If the change touches **data access, auth, routing, or backend logic**, also run:
-3) `pnpm test:integration`
+## 7) Security & privacy (non-negotiable)
+Owner and dog details are stored only to process booking enquiries and reduce friction on repeat bookings — never for marketing, cross-kennel promotion, or behavioural profiling. Any reuse beyond that needs explicit user consent.
 
-If the change affects a **core user flow** (enquiry submission, inbox triage):
-4) `pnpm e2e`
-
-Work is not complete if any required command fails.
-
-### Handling failures
-- If tests fail due to your changes, fix them before proceeding.
-- If failures are pre-existing or flaky, document this clearly and propose a fix in the PR summary.
-
-### Output expectations
-Every PR or change summary must include a **Verification** section stating:
-- Which test commands were run
-- What tests were added or updated
-- Any remaining known risks
-
-## 7) Tech choices
-
-Default stack:
-- Next.js (App Router) + TypeScript
-- Hosting: Vercel
-- Database: Supabase Postgres
-- ORM: none (NO Prisma)
-- Data access: Supabase JS client
-- Auth: Supabase Auth for kennel operator accounts
-- Authorization: Supabase Row Level Security (RLS) from day one
-- Email: Resend (or equivalent) via a small provider interface
-
-Rules:
-- Never use Prisma in this project.
-- Do not connect directly to Postgres from Vercel functions; use Supabase JS client.
-- Use `SUPABASE_SERVICE_ROLE_KEY` only in server-side code (route handlers / server actions).
-- Use `SUPABASE_ANON_KEY` for client-side reads/writes governed by RLS.
-
-## 8) Security & privacy (non-negotiable)
-We store owner and dog details strictly to:
-- Process booking enquiries
-- Enable repeat bookings with less friction
-
-We do NOT use stored data for:
-- Marketing
-- Cross-kennel promotion
-- Behavioural profiling
-
-Rules:
-- Treat all inputs as sensitive.
-- Do not log PII (emails, phone numbers, notes, vaccination dates).
-- Vaccination data is date-only (no document uploads in Phase 1/2).
+- Treat all inputs as sensitive. Never log PII (emails, phone numbers, notes, vaccination dates).
+- Vaccination data is date-only — no document uploads in Phase 1/2.
 - Internal notes must not be framed as medical records.
 
-Any reuse beyond enquiry processing and rebooking requires explicit user consent.
-
-## 9) Data model (current phases)
-
-**Core:**
-- `organisations` — the business entity. Seeded from AAL register data; exists before any operator claims it. Fields: name, slug, licence_region, street_address, locality, region, postcode, telephone, contact_email, website, is_claimed.
-- `user_profiles` — extends auth.users. type = 'owner' (dog owner) or 'operator' (kennel operator, org_id set). No separate permissions table until Phase 3.
-
-**Operator config (Phase 2):**
+## 8) Data model (current phases)
+- `organisations` — the business entity, seeded from AAL register data before any operator claims it. name, slug, licence_region, address fields, postcode, telephone, contact_email, website, latitude, longitude, `claim_status` (unclaimed / pending_verification / claimed / rejected). Unclaimed listings are public by default; there is no visibility/hidden field. latitude/longitude are nullable, geocoded via postcodes.io by `scripts/geocode-organisations.ts` and `scripts/seed-organisations.ts` (see `scripts/lib/geocode.ts`) — no licence_number or star_rating columns exist (2026-08-19 decision).
+- `user_profiles` — extends `auth.users`. `type` = 'owner' or 'operator' (operators have `org_id` set). Dog owners are `user_profiles` rows — there is no `owners` table.
 - `capacity_settings` — max_dogs_total, max_dogs_by_size, min_notice_days. FK → organisations.
 - `blackout_dates` — date, reason. FK → organisations.
+- `booking_requests` — dates, status (new / needs-info / accepted / rejected). FKs → organisations, dogs, user_profiles.
+- `dogs` — name, breed, size_category, vaccination_expiry_date, internal_notes. FKs → user_profiles, organisations.
+- `internal_notes` — free text, private to the organisation. FKs → organisations, booking_requests.
 
-**Enquiry management (Phase 2):**
-- `booking_requests` — dates, status (new / needs-info / accepted / rejected). FKs → organisations + dogs + user_profiles.
-- `dogs` — name, breed, size_category, vaccination_expiry_date, internal_notes. FKs → user_profiles (the owner's account) + organisations.
-- `internal_notes` — free text, private to the organisation. FKs → organisations + booking_requests.
+The FK to organisations is always `org_id`, never `kennel_id`.
 
-Dog owners are `user_profiles` records with type='owner'. There is no separate `owners` table. Dog owners must sign up to submit an enquiry; the sign-up gate appears after the form is filled, not before (implemented in `components/booking-form.tsx`). See DECISIONS.md for the two ADRs covering this.
+### Gotchas (app layer migrated onto this schema 2026-08-19)
+- `user_profiles.id` **is** the `auth.users` id — there is no `user_id` column. Query a caller's own profile with `.eq("id", user.id)`.
+- Owner email lives only in `auth.users`. Reading it server-side needs `supabase.auth.admin.getUserById()` on a service-role client.
+- RLS lets a user read only their own `user_profiles` row (`auth.uid() = id`). Staff routes needing owner name/phone/email authorize the caller with the RLS-bound client first, then read cross-owner data with the service-role client.
+- `dogs` has `unique (user_id, name)` — a dog's identity is scoped to its owner, not the org. The same dog enquiring at a second kennel moves its `org_id` rather than creating a second row.
+- `user_profiles` has no `role` column, `organisations` has no `notify_*` columns, `booking_requests` has no `contact_opt_in` column. Don't reintroduce them without a schema change.
+- `organisations.postcode` is `not null`. `scripts/seed-organisations.ts` upserts in batches of 100, so one blank postcode fails the *whole batch* — blanks are filtered out with a warning before batching. Seeded from `scripts/data/kennels.csv` (gitignored, 1,222 rows).
+- `schema.sql` is a full drop-and-recreate reset, safe only against an empty database. The database has had real data since 2026-08-19, so schema changes need an additive migration in `supabase/migrations/`, run by hand in the Supabase SQL Editor. Keep `schema.sql` in sync as the target state for fresh environments.
 
-All tables use `org_id` as the FK to organisations. Never `kennel_id`.
+## 9) Commands & known gaps
+`pnpm i` · `pnpm dev` · `pnpm test` · `pnpm test:integration` · `pnpm test:e2e` · `pnpm lint`
 
-**Gotchas worth knowing before touching this schema again (app code was fully migrated 2026-08-19, see that commit):**
-- `user_profiles.id` IS the `auth.users` id (primary key references it directly) — there is no separate `user_id` column. Query a caller's own profile with `.eq("id", user.id)`, not `.eq("user_id", user.id)`.
-- Owner email lives only in `auth.users`, never in `user_profiles`. Reading it server-side requires `supabase.auth.admin.getUserById()` on a service-role client.
-- RLS has no policy letting an operator read another user's `user_profiles` row directly (only `auth.uid() = id`). Staff routes that need owner name/phone/email (dogs list, owner detail, request detail/list) authorize the caller with the RLS-bound client first, then read cross-owner data with the service-role client.
-- `dogs` has a `unique (user_id, name)` constraint — a dog's identity is scoped to its owner, not to the org. The same dog name enquiring at a second kennel will move that dog's `org_id`, not create a second row.
-- `user_profiles` has no `role` column (team roles are Phase 3, out of scope) and `organisations` has no `notify_*` columns (email sending, EP-03 F5/F6, isn't built yet). Don't reintroduce either without a schema change.
-- `booking_requests` has no `contact_opt_in` column.
-- `organisations.postcode` is `not null`. `scripts/seed-organisations.ts` upserts in batches of 100 — one row with a blank postcode fails the *whole batch*, not just that row (filtered out with a warning before batching, as of 2026-08-19). `organisations` is seeded (1,222 rows, from `scripts/data/kennels.csv`, gitignored — not in the repo).
+- **There is no test suite in this repo yet** — the scripts exist, the test files don't. A known gap, not a green baseline.
+- `pnpm lint` is broken: Next 16 removed `next lint` and no replacement is wired up.
+- `next.config.mjs` sets `typescript.ignoreBuildErrors: true` to work around a `@supabase/supabase-js` v2.45 generic-inference bug that floods `tsc` with spurious `does not exist on type 'never'` errors. Pre-existing, not a signal of real type errors.
 
-## 10) Common commands
-- Install: `pnpm i`
-- Dev: `pnpm dev`
-- Test: `pnpm test`
-- Lint: `pnpm lint` *(currently broken — Next 16 removed `next lint`; no replacement wired up yet)*
+## 10) Style
+Small functions, explicit naming, no clever abstractions. Prefer server actions / route handlers that are easy to test. Always explain the "why" in comments for business rules.
 
-Create `test:integration` and `e2e` scripts if missing; keep them passing. **There is currently no test suite in this repo at all**, despite §6 above — a known, unaddressed gap, not a green baseline to assume. `next.config.mjs` also sets `typescript.ignoreBuildErrors: true` to work around a `@supabase/supabase-js` v2.45 generic-inference bug that otherwise floods `tsc` with spurious `does not exist on type 'never'` errors on every Supabase query — pre-existing, not a signal of real type errors.
-
-## 11) Style
-- Small functions, explicit naming, no clever abstractions.
-- Prefer server actions / route handlers that are easy to test.
-- Always include "why" in comments for business rules.
-
-## 12) If uncertain
-Ask exactly one question; otherwise choose the simplest approach consistent with this file.
+If uncertain: ask exactly one question, otherwise take the simplest approach consistent with this file.
