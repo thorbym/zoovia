@@ -123,17 +123,21 @@ Any reuse beyond enquiry processing and rebooking requires explicit user consent
 
 ## 9) Data model (current phases)
 
-**Phase 1:**
-- `Listing` — seeded kennel profile (name, location, AAL licence number, star rating, website)
-- `ClaimedProfile` — operator-enriched profile linked to a verified Listing
+**Core:**
+- `organisations` — the business entity. Seeded from AAL register data; exists before any operator claims it. Fields: name, slug, licence_region, street_address, locality, region, postcode, telephone, contact_email, website, is_claimed.
+- `user_profiles` — extends auth.users. type = 'owner' (dog owner) or 'operator' (kennel operator, org_id set). No separate permissions table until Phase 3.
 
-**Phase 2:**
-- `Kennel` — operator account and settings
-- `CapacitySettings` — max_dogs_by_size, blackout_dates
-- `BookingEnquiry` — dates, status (new / needs-info / accepted / rejected), timestamps
-- `Dog` — name, breed, size_category, vaccination_expiry_date, internal_notes
-- `Owner` — name, email, phone
-- `InternalNote` — free text, private to kennel
+**Operator config (Phase 2):**
+- `capacity_settings` — max_dogs_total, max_dogs_by_size, min_notice_days. FK → organisations.
+- `blackout_dates` — date, reason. FK → organisations.
+
+**Enquiry management (Phase 2):**
+- `booking_requests` — dates, status (new / needs-info / accepted / rejected). FK → organisations.
+- `owners` — name, email, phone. FK → organisations.
+- `dogs` — name, breed, size_category, vaccination_expiry_date, internal_notes. FK → organisations + owners.
+- `internal_notes` — free text, private to the organisation. FK → organisations + booking_requests.
+
+All tables use `org_id` as the FK to organisations. Never `kennel_id`.
 
 ## 10) Common commands
 - Install: `pnpm i`
