@@ -130,10 +130,10 @@
 
 **Scope:**
 - Dog profile auto-created from enquiry: name, breed, size, vaccination expiry date, internal notes
-- Owner profile auto-created: name, email, phone
+- Dog owner account created or linked via the sign-up gate at form submission (user_profiles record with type='owner'; full_name and phone captured at sign-up)
 - Dog and owner linked to all their enquiries (history view)
-- Operator can edit dog/owner profile fields
-- Repeat booker detection — if email matches an existing owner, link to existing profile
+- Operator can edit dog profile fields and add internal notes
+- Repeat booker: if the user is already signed in, their existing user_profiles record is linked automatically
 
 **Out of scope:**
 - Owner-facing portal or self-service profile editing (Phase 6)

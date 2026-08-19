@@ -132,10 +132,11 @@ Any reuse beyond enquiry processing and rebooking requires explicit user consent
 - `blackout_dates` — date, reason. FK → organisations.
 
 **Enquiry management (Phase 2):**
-- `booking_requests` — dates, status (new / needs-info / accepted / rejected). FK → organisations.
-- `owners` — name, email, phone. FK → organisations.
-- `dogs` — name, breed, size_category, vaccination_expiry_date, internal_notes. FK → organisations + owners.
-- `internal_notes` — free text, private to the organisation. FK → organisations + booking_requests.
+- `booking_requests` — dates, status (new / needs-info / accepted / rejected). FKs → organisations + dogs + user_profiles.
+- `dogs` — name, breed, size_category, vaccination_expiry_date, internal_notes. FKs → user_profiles (the owner's account) + organisations.
+- `internal_notes` — free text, private to the organisation. FKs → organisations + booking_requests.
+
+Dog owners are `user_profiles` records with type='owner'. There is no separate `owners` table. Dog owners must sign up to submit an enquiry; the sign-up gate appears after the form is filled, not before. See DECISIONS.md for the two ADRs covering this.
 
 All tables use `org_id` as the FK to organisations. Never `kennel_id`.
 

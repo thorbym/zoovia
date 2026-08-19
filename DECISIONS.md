@@ -107,3 +107,35 @@ Zero competitors address it. It is a concrete value prop for operators facing an
 
 Consequences:
 Compliance record schemas must be designed with the AAL framework in mind. Phase 4 work. No impact on Phase 1/2.
+
+---
+
+## 2026-08-19 — Dog owners are user_profiles; no separate owners table — Accepted
+
+Context:
+An earlier schema had a standalone `owners` table (name, email, phone, FK → organisations). This duplicated identity data and made it impossible to link a single dog owner to multiple kennels or to their Supabase auth account.
+
+Decision:
+Drop the `owners` table. Dog owners are `user_profiles` records with `type = 'owner'`. The `dogs` and `booking_requests` tables FK to `user_profiles(id)` via a `user_id` column.
+
+Rationale:
+Owners are users of the platform, not just a data record held by a kennel. Keeping them in `user_profiles` enables auth, RLS, and repeat booking detection without duplicate storage. The `org_id` on `user_profiles` is only set for operators; owner records leave it null.
+
+Consequences:
+`dogs.user_id` and `booking_requests.user_id` reference `user_profiles(id)`. RLS policies on both tables grant access to the authenticated owner (where `user_id = auth.uid()`) and to operators of the relevant organisation. No migration is required — there is no production data worth preserving.
+
+---
+
+## 2026-08-19 — Account gate appears after form fill, not before — Accepted
+
+Context:
+Requiring a dog owner to create an account before filling in the enquiry form creates drop-off before the user has demonstrated intent. The alternative is to collect form data first and prompt sign-up only at submission.
+
+Decision:
+Dog owners fill the entire enquiry form (dog details, dates, notes) before being prompted to sign in or create an account. The sign-up/sign-in gate appears at the final submission step. If the user is already signed in, they proceed directly.
+
+Rationale:
+The form represents investment — a user who has filled it is far more likely to complete sign-up than a user shown a gate on arrival. This is a standard pattern for conversion-optimised marketplace onboarding.
+
+Consequences:
+The enquiry form must hold state across the sign-up flow (e.g. via sessionStorage or a URL param). The `user_id` on `dogs` and `booking_requests` is only set on successful sign-up and submission — there is no anonymous submission path.

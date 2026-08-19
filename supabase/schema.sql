@@ -4,7 +4,7 @@
 -- Safe to re-run on an empty database.
 -- ============================================================
 
--- Drop old tables if migrating from the kennel-intake schema
+-- Drop old tables if migrating from a previous schema
 drop table if exists public.internal_notes cascade;
 drop table if exists public.booking_requests cascade;
 drop table if exists public.dogs cascade;
@@ -17,7 +17,7 @@ drop type if exists public.booking_status cascade;
 drop type if exists public.availability_signal cascade;
 
 -- ============================================================
--- Core: organisations + users
+-- Core: organisations + user profiles
 -- ============================================================
 
 -- organisations — the canonical business record.
@@ -40,12 +40,14 @@ create table public.organisations (
 );
 
 -- user_profiles — extends auth.users.
--- type = 'owner'    → dog owner, no org link
--- type = 'operator' → kennel operator, org_id points to their organisation
+-- type = 'owner'    → dog owner; no org link
+-- type = 'operator' → kennel operator; org_id points to their organisation
 create table public.user_profiles (
   id         uuid        primary key references auth.users (id) on delete cascade,
   type       text        not null check (type in ('owner', 'operator')),
   org_id     uuid        references public.organisations (id) on delete set null,
+  full_name  text,
+  phone      text,
   created_at timestamptz not null default now()
 );
 
@@ -76,27 +78,19 @@ create table public.blackout_dates (
 -- Enquiry management
 -- ============================================================
 
-create table public.owners (
-  id         uuid    primary key default gen_random_uuid(),
-  org_id     uuid    not null references public.organisations (id) on delete cascade,
-  name       text    not null,
-  email      text    not null,
-  phone      text,
-  created_at timestamptz not null default now(),
-  unique (org_id, email)
-);
-
+-- dogs — belong to a user account (the dog owner).
+-- org_id is set at enquiry time so the operator can see them.
 create table public.dogs (
   id                      uuid primary key default gen_random_uuid(),
+  user_id                 uuid not null references public.user_profiles (id) on delete cascade,
   org_id                  uuid not null references public.organisations (id) on delete cascade,
-  owner_id                uuid not null references public.owners (id) on delete cascade,
   name                    text not null,
   breed                   text not null,
   size_category           text not null check (size_category in ('small', 'medium', 'large')),
   vaccination_expiry_date date,
   internal_notes          text,
   created_at              timestamptz not null default now(),
-  unique (org_id, owner_id, name)
+  unique (user_id, name)
 );
 
 create type public.booking_status as enum ('new', 'needs-info', 'accepted', 'rejected');
@@ -106,14 +100,13 @@ create table public.booking_requests (
   id                  uuid    primary key default gen_random_uuid(),
   org_id              uuid    not null references public.organisations (id) on delete cascade,
   dog_id              uuid    not null references public.dogs (id) on delete cascade,
-  owner_id            uuid    not null references public.owners (id) on delete cascade,
+  user_id             uuid    not null references public.user_profiles (id) on delete cascade,
   check_in_date       date    not null,
   check_out_date      date    not null,
   status              public.booking_status      not null default 'new',
   availability_signal public.availability_signal,
   capacity_snapshot   jsonb,
   notes               text,
-  contact_opt_in      boolean not null default false,
   created_at          timestamptz not null default now(),
   updated_at          timestamptz not null default now(),
   constraint check_dates check (check_out_date > check_in_date)
@@ -136,22 +129,23 @@ create index idx_organisations_postcode  on public.organisations (postcode);
 create index idx_organisations_region    on public.organisations (region);
 create index idx_organisations_claimed   on public.organisations (is_claimed);
 create index idx_user_profiles_org       on public.user_profiles (org_id);
+create index idx_dogs_user               on public.dogs (user_id);
+create index idx_dogs_org                on public.dogs (org_id);
 create index idx_booking_requests_status on public.booking_requests (org_id, status);
 create index idx_booking_requests_dates  on public.booking_requests (org_id, check_in_date, check_out_date);
-create index idx_dogs_owner              on public.dogs (owner_id);
+create index idx_booking_requests_user   on public.booking_requests (user_id);
 
 -- ============================================================
 -- Row Level Security
 -- ============================================================
 
-alter table public.organisations    enable row level security;
-alter table public.user_profiles    enable row level security;
+alter table public.organisations     enable row level security;
+alter table public.user_profiles     enable row level security;
 alter table public.capacity_settings enable row level security;
-alter table public.blackout_dates   enable row level security;
-alter table public.owners           enable row level security;
-alter table public.dogs             enable row level security;
-alter table public.booking_requests enable row level security;
-alter table public.internal_notes   enable row level security;
+alter table public.blackout_dates    enable row level security;
+alter table public.dogs              enable row level security;
+alter table public.booking_requests  enable row level security;
+alter table public.internal_notes    enable row level security;
 
 -- organisations: anyone can read (public directory)
 create policy "Public can read organisations"
@@ -183,7 +177,13 @@ create policy "Users can update own profile"
   using (auth.uid() = id)
   with check (auth.uid() = id);
 
--- capacity_settings
+-- user_profiles: created on sign-up (insert allowed for authenticated users for their own row)
+create policy "Users can insert own profile"
+  on public.user_profiles for insert
+  to authenticated
+  with check (auth.uid() = id);
+
+-- capacity_settings: operators only
 create policy "Operators can manage capacity settings"
   on public.capacity_settings for all
   to authenticated
@@ -196,7 +196,7 @@ create policy "Operators can manage capacity settings"
     where up.id = auth.uid() and up.type = 'operator' and up.org_id = capacity_settings.org_id
   ));
 
--- blackout_dates
+-- blackout_dates: operators only
 create policy "Operators can manage blackout dates"
   on public.blackout_dates for all
   to authenticated
@@ -209,34 +209,29 @@ create policy "Operators can manage blackout dates"
     where up.id = auth.uid() and up.type = 'operator' and up.org_id = blackout_dates.org_id
   ));
 
--- owners
-create policy "Operators can manage owners"
-  on public.owners for all
-  to authenticated
-  using (exists (
-    select 1 from public.user_profiles up
-    where up.id = auth.uid() and up.type = 'operator' and up.org_id = owners.org_id
-  ))
-  with check (exists (
-    select 1 from public.user_profiles up
-    where up.id = auth.uid() and up.type = 'operator' and up.org_id = owners.org_id
-  ));
-
--- dogs
-create policy "Operators can manage dogs"
+-- dogs: owners manage their own; operators can read dogs enquiring at their org
+create policy "Owners can manage their own dogs"
   on public.dogs for all
   to authenticated
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+create policy "Operators can read dogs at their org"
+  on public.dogs for select
+  to authenticated
   using (exists (
-    select 1 from public.user_profiles up
-    where up.id = auth.uid() and up.type = 'operator' and up.org_id = dogs.org_id
-  ))
-  with check (exists (
     select 1 from public.user_profiles up
     where up.id = auth.uid() and up.type = 'operator' and up.org_id = dogs.org_id
   ));
 
--- booking_requests
-create policy "Operators can manage booking requests"
+-- booking_requests: owners see their own; operators manage all for their org
+create policy "Owners can manage their own booking requests"
+  on public.booking_requests for all
+  to authenticated
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+create policy "Operators can manage booking requests at their org"
   on public.booking_requests for all
   to authenticated
   using (exists (
@@ -248,7 +243,7 @@ create policy "Operators can manage booking requests"
     where up.id = auth.uid() and up.type = 'operator' and up.org_id = booking_requests.org_id
   ));
 
--- internal_notes
+-- internal_notes: operators only (never visible to dog owners)
 create policy "Operators can manage internal notes"
   on public.internal_notes for all
   to authenticated
