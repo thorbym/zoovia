@@ -14,7 +14,7 @@ type CapacityResult = {
 
 export async function computeAvailabilitySignal(
   supabase: DbClient,
-  kennelId: string,
+  orgId: string,
   checkInDate: string,
   checkOutDate: string,
 ): Promise<CapacityResult> {
@@ -22,12 +22,12 @@ export async function computeAvailabilitySignal(
     supabase
       .from("capacity_settings")
       .select("max_dogs_total")
-      .eq("kennel_id", kennelId)
+      .eq("org_id", orgId)
       .maybeSingle(),
     supabase
       .from("blackout_dates")
       .select("date")
-      .eq("kennel_id", kennelId)
+      .eq("org_id", orgId)
       .gte("date", checkInDate)
       .lt("date", checkOutDate),
   ])
@@ -35,7 +35,7 @@ export async function computeAvailabilitySignal(
   const { count: overlappingCount } = await supabase
     .from("booking_requests")
     .select("id", { count: "exact", head: true })
-    .eq("kennel_id", kennelId)
+    .eq("org_id", orgId)
     .in("status", ["new", "needs-info", "accepted"])
     .lt("check_in_date", checkOutDate)
     .gt("check_out_date", checkInDate)

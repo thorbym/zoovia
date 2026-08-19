@@ -32,19 +32,20 @@ export async function POST(request: Request) {
 
   const slug = body.kennelSlug.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")
 
-  const { data: kennel, error: kennelError } = await supabase
-    .from("kennels")
+  const { data: organisation, error: organisationError } = await supabase
+    .from("organisations")
     .insert({
       name: body.kennelName,
       slug,
       contact_email: body.email,
       postcode: body.postcode,
-      phone: body.phone ?? null,
+      telephone: body.phone ?? null,
+      is_claimed: true,
     })
     .select("id, name, slug")
     .single()
 
-  if (kennelError) {
+  if (organisationError) {
     return NextResponse.json({ error: "Could not create kennel" }, { status: 400 })
   }
 
@@ -58,10 +59,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Could not create user" }, { status: 400 })
   }
 
-  const { error: profileError } = await supabase.from("staff_profiles").insert({
-    user_id: userData.user.id,
-    kennel_id: kennel.id,
-    role: "owner",
+  const { error: profileError } = await supabase.from("user_profiles").insert({
+    id: userData.user.id,
+    type: "operator",
+    org_id: organisation.id,
   })
 
   if (profileError) {
@@ -69,7 +70,7 @@ export async function POST(request: Request) {
   }
 
   const { error: capacityError } = await supabase.from("capacity_settings").insert({
-    kennel_id: kennel.id,
+    org_id: organisation.id,
     max_dogs_total: body.maxDogsTotal,
     min_notice_days: body.minNoticeDays ?? 0,
   })
@@ -78,5 +79,5 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Could not save capacity settings" }, { status: 400 })
   }
 
-  return NextResponse.json({ slug: kennel.slug })
+  return NextResponse.json({ slug: organisation.slug })
 }

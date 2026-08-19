@@ -1,15 +1,6 @@
 import { NextResponse } from "next/server"
 import { createServiceRoleSupabaseClient, createSupabaseServerClient } from "@/lib/supabase/clients"
 
-type OwnerRow = {
-  id: string
-  kennel_id: string
-  name: string
-  email: string
-  phone: string | null
-  created_at: string
-}
-
 type DogRow = {
   id: string
   name: string
@@ -48,20 +39,22 @@ export async function GET(
   }
 
   const { data: profile } = await supabase
-    .from("staff_profiles")
-    .select("kennel_id")
-    .eq("user_id", user.id)
+    .from("user_profiles")
+    .select("org_id")
+    .eq("id", user.id)
+    .eq("type", "operator")
     .single()
 
-  if (!profile) {
+  if (!profile || !profile.org_id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
   const serviceRole = createServiceRoleSupabaseClient()
-  const { data: owner, error: ownerError } = await serviceRole
-    .from("owners")
-    .select("id, kennel_id, name, email, phone, created_at")
+  const { data: ownerProfile, error: ownerError } = await serviceRole
+    .from("user_profiles")
+    .select("id, full_name, phone, created_at")
     .eq("id", ownerId)
+    .eq("type", "owner")
     .maybeSingle()
 
   if (ownerError) {
@@ -71,19 +64,15 @@ export async function GET(
     )
   }
 
-  if (!owner) {
+  if (!ownerProfile) {
     return NextResponse.json({ error: "Not found" }, { status: 404 })
-  }
-
-  if (owner.kennel_id !== profile.kennel_id) {
-    return NextResponse.json({ error: "Owner belongs to another kennel" }, { status: 403 })
   }
 
   const { data: dogs, error: dogsError } = await serviceRole
     .from("dogs")
     .select("id, name, breed, size_category, vaccination_expiry_date, internal_notes")
-    .eq("kennel_id", profile.kennel_id)
-    .eq("owner_id", ownerId)
+    .eq("org_id", profile.org_id)
+    .eq("user_id", ownerId)
     .order("name", { ascending: true })
 
   if (dogsError) {
@@ -93,13 +82,21 @@ export async function GET(
   const { data: requests, error: requestsError } = await serviceRole
     .from("booking_requests")
     .select("id, check_in_date, check_out_date, status, created_at, dogs ( id, name )")
-    .eq("kennel_id", profile.kennel_id)
-    .eq("owner_id", ownerId)
+    .eq("org_id", profile.org_id)
+    .eq("user_id", ownerId)
     .order("check_in_date", { ascending: false })
 
   if (requestsError) {
     return NextResponse.json({ error: "Could not load booking history" }, { status: 400 })
   }
+
+  // An owner has no org_id of their own — they only "belong" to a kennel
+  // through the dogs/requests they've submitted there.
+  if ((dogs?.length ?? 0) === 0 && (requests?.length ?? 0) === 0) {
+    return NextResponse.json({ error: "Owner has no history with this kennel" }, { status: 403 })
+  }
+
+  const { data: ownerAuth } = await serviceRole.auth.admin.getUserById(ownerId)
 
   const mappedRequests = (requests ?? []).map((request: BookingRequestRow) => {
     const dog = Array.isArray(request.dogs) ? request.dogs[0] : request.dogs
@@ -114,7 +111,13 @@ export async function GET(
   })
 
   return NextResponse.json({
-    owner: owner as OwnerRow,
+    owner: {
+      id: ownerProfile.id,
+      name: ownerProfile.full_name ?? "Unknown owner",
+      email: ownerAuth?.user?.email ?? "",
+      phone: ownerProfile.phone,
+      created_at: ownerProfile.created_at,
+    },
     dogs: (dogs ?? []) as DogRow[],
     requests: mappedRequests,
   })

@@ -17,12 +17,13 @@ export async function POST(request: Request) {
   }
 
   const { data: profile, error: profileError } = await supabase
-    .from("staff_profiles")
-    .select("kennel_id")
-    .eq("user_id", user.id)
+    .from("user_profiles")
+    .select("org_id")
+    .eq("id", user.id)
+    .eq("type", "operator")
     .single()
 
-  if (profileError || !profile) {
+  if (profileError || !profile || !profile.org_id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
@@ -34,7 +35,7 @@ export async function POST(request: Request) {
   const { data: blackout, error } = await supabase
     .from("blackout_dates")
     .insert({
-      kennel_id: profile.kennel_id,
+      org_id: profile.org_id,
       date: body.date,
       reason: body.reason?.trim() ? body.reason.trim() : null,
     })

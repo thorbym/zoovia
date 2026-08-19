@@ -22,7 +22,7 @@ export default async function BookingPage({
   } else {
     const supabase = await createSupabaseServerClient()
     const { data } = await supabase
-      .from("kennels")
+      .from("organisations")
       .select("name, slug, postcode")
       .ilike("slug", slug)
       .single()

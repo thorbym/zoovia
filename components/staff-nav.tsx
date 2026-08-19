@@ -15,7 +15,7 @@ const NAV_ITEMS = [
   { href: "/staff/settings", label: "Settings", icon: Settings },
 ]
 
-export function StaffNav({ kennelSlug, kennelName }: { kennelSlug?: string; kennelName?: string }) {
+export function StaffNav({ orgSlug, orgName }: { orgSlug?: string; orgName?: string }) {
   const pathname = usePathname()
   const router = useRouter()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
@@ -64,13 +64,13 @@ export function StaffNav({ kennelSlug, kennelName }: { kennelSlug?: string; kenn
             className="w-full justify-start gap-3 mb-2 bg-transparent text-muted-foreground"
           >
             <a
-              href={kennelSlug ? `/book/${kennelSlug}` : "/book"}
+              href={orgSlug ? `/book/${orgSlug}` : "/book"}
               target="_blank"
               rel="noopener noreferrer"
               aria-label="View booking page"
             >
               <ExternalLink className="h-4 w-4" />
-              {kennelName ? `View ${kennelName}` : "View booking page"}
+              {orgName ? `View ${orgName}` : "View booking page"}
             </a>
           </Button>
           <Button
@@ -133,13 +133,13 @@ export function StaffNav({ kennelSlug, kennelName }: { kennelSlug?: string; kenn
                 className="w-full justify-start gap-3 mb-1 bg-transparent text-muted-foreground"
               >
                 <a
-                  href={kennelSlug ? `/book/${kennelSlug}` : "/book"}
+                  href={orgSlug ? `/book/${orgSlug}` : "/book"}
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label="View booking page"
                 >
                   <ExternalLink className="h-4 w-4" />
-                  {kennelName ? `View ${kennelName}` : "View booking page"}
+                  {orgName ? `View ${orgName}` : "View booking page"}
                 </a>
               </Button>
               <Button

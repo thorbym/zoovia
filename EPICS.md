@@ -80,8 +80,8 @@
 #### F4: Enquiry stored ✅ Done
 
 - Enquiry saved to `booking_requests` with status `new`
-- Owner upserted by (kennel_id, email) — repeat bookers link to their existing owner record
-- Dog upserted by (kennel_id, owner_id, name)
+- Owner identified by their authenticated account (sign-up/sign-in gate after form fill — see 2026-08-19 ADR); repeat bookers link to their existing `user_profiles` record
+- Dog upserted by (user_id, name)
 - Availability signal and capacity snapshot recorded at time of submission
 - Minimum notice period enforced (configurable per kennel)
 - Submission blocked with a clear error if availability is `full` (409)

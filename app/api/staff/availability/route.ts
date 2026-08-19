@@ -17,19 +17,20 @@ export async function GET() {
   }
 
   const { data: profile, error: profileError } = await supabase
-    .from("staff_profiles")
-    .select("kennel_id")
-    .eq("user_id", user.id)
+    .from("user_profiles")
+    .select("org_id")
+    .eq("id", user.id)
+    .eq("type", "operator")
     .single()
 
-  if (profileError || !profile) {
+  if (profileError || !profile || !profile.org_id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
   const { data: capacity, error: capacityError } = await supabase
     .from("capacity_settings")
     .select("max_dogs_total, min_notice_days")
-    .eq("kennel_id", profile.kennel_id)
+    .eq("org_id", profile.org_id)
     .maybeSingle()
 
   if (capacityError) {
@@ -39,7 +40,7 @@ export async function GET() {
   const { data: blackouts, error: blackoutError } = await supabase
     .from("blackout_dates")
     .select("id, date, reason")
-    .eq("kennel_id", profile.kennel_id)
+    .eq("org_id", profile.org_id)
     .order("date", { ascending: true })
 
   if (blackoutError) {
@@ -66,12 +67,13 @@ export async function PATCH(request: Request) {
   }
 
   const { data: profile, error: profileError } = await supabase
-    .from("staff_profiles")
-    .select("kennel_id")
-    .eq("user_id", user.id)
+    .from("user_profiles")
+    .select("org_id")
+    .eq("id", user.id)
+    .eq("type", "operator")
     .single()
 
-  if (profileError || !profile) {
+  if (profileError || !profile || !profile.org_id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
@@ -89,12 +91,12 @@ export async function PATCH(request: Request) {
     .from("capacity_settings")
     .upsert(
       {
-        kennel_id: profile.kennel_id,
+        org_id: profile.org_id,
         max_dogs_total: body.maxDogsTotal,
         min_notice_days: body.minNoticeDays,
         updated_at: new Date().toISOString(),
       },
-      { onConflict: "kennel_id" },
+      { onConflict: "org_id" },
     )
     .select("max_dogs_total, min_notice_days")
     .single()

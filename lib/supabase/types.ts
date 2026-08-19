@@ -9,73 +9,88 @@ export type Json =
 export interface Database {
   public: {
     Tables: {
-      kennels: {
+      organisations: {
         Row: {
-          created_at: string
-          contact_email: string
           id: string
           name: string
-          notify_accepted: boolean
-          notify_new_request: boolean
-          notify_rejected: boolean
-          phone: string | null
-          postcode: string
           slug: string
+          licence_region: string | null
+          street_address: string | null
+          locality: string | null
+          region: string | null
+          postcode: string
+          telephone: string | null
+          contact_email: string | null
+          website: string | null
+          is_claimed: boolean
+          created_at: string
           updated_at: string
         }
         Insert: {
-          created_at?: string
-          contact_email: string
           id?: string
           name: string
-          notify_accepted?: boolean
-          notify_new_request?: boolean
-          notify_rejected?: boolean
-          phone?: string | null
-          postcode: string
           slug: string
+          licence_region?: string | null
+          street_address?: string | null
+          locality?: string | null
+          region?: string | null
+          postcode: string
+          telephone?: string | null
+          contact_email?: string | null
+          website?: string | null
+          is_claimed?: boolean
+          created_at?: string
           updated_at?: string
         }
         Update: {
-          created_at?: string
-          contact_email?: string
           id?: string
           name?: string
-          notify_accepted?: boolean
-          notify_new_request?: boolean
-          notify_rejected?: boolean
-          phone?: string | null
-          postcode?: string
           slug?: string
+          licence_region?: string | null
+          street_address?: string | null
+          locality?: string | null
+          region?: string | null
+          postcode?: string
+          telephone?: string | null
+          contact_email?: string | null
+          website?: string | null
+          is_claimed?: boolean
+          created_at?: string
           updated_at?: string
         }
         Relationships: []
       }
-      staff_profiles: {
+      user_profiles: {
         Row: {
+          id: string
+          type: "owner" | "operator"
+          org_id: string | null
+          full_name: string | null
+          phone: string | null
           created_at: string
-          kennel_id: string
-          role: string
-          user_id: string
         }
         Insert: {
+          id: string
+          type: "owner" | "operator"
+          org_id?: string | null
+          full_name?: string | null
+          phone?: string | null
           created_at?: string
-          kennel_id: string
-          role?: string
-          user_id: string
         }
         Update: {
+          id?: string
+          type?: "owner" | "operator"
+          org_id?: string | null
+          full_name?: string | null
+          phone?: string | null
           created_at?: string
-          kennel_id?: string
-          role?: string
-          user_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "staff_profiles_kennel_id_fkey"
-            columns: ["kennel_id"]
+            foreignKeyName: "user_profiles_org_id_fkey"
+            columns: ["org_id"]
             isOneToOne: false
-            referencedRelation: "kennels"
+            referencedRelation: "organisations"
             referencedColumns: ["id"]
           }
         ]
@@ -83,200 +98,162 @@ export interface Database {
       capacity_settings: {
         Row: {
           id: string
-          kennel_id: string
-          max_dogs_by_size: Json
+          org_id: string
           max_dogs_total: number
+          max_dogs_by_size: Json
           min_notice_days: number
           updated_at: string
         }
         Insert: {
           id?: string
-          kennel_id: string
-          max_dogs_by_size?: Json
+          org_id: string
           max_dogs_total: number
+          max_dogs_by_size?: Json
           min_notice_days?: number
           updated_at?: string
         }
         Update: {
           id?: string
-          kennel_id?: string
-          max_dogs_by_size?: Json
+          org_id?: string
           max_dogs_total?: number
+          max_dogs_by_size?: Json
           min_notice_days?: number
           updated_at?: string
         }
         Relationships: [
           {
-            foreignKeyName: "capacity_settings_kennel_id_fkey"
-            columns: ["kennel_id"]
+            foreignKeyName: "capacity_settings_org_id_fkey"
+            columns: ["org_id"]
             isOneToOne: true
-            referencedRelation: "kennels"
+            referencedRelation: "organisations"
             referencedColumns: ["id"]
           }
         ]
       }
       blackout_dates: {
         Row: {
-          created_at: string
-          date: string
           id: string
-          kennel_id: string
+          org_id: string
+          date: string
           reason: string | null
-        }
-        Insert: {
-          created_at?: string
-          date: string
-          id?: string
-          kennel_id: string
-          reason?: string | null
-        }
-        Update: {
-          created_at?: string
-          date?: string
-          id?: string
-          kennel_id?: string
-          reason?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "blackout_dates_kennel_id_fkey"
-            columns: ["kennel_id"]
-            isOneToOne: false
-            referencedRelation: "kennels"
-            referencedColumns: ["id"]
-          }
-        ]
-      }
-      owners: {
-        Row: {
           created_at: string
-          email: string
-          id: string
-          kennel_id: string
-          name: string
-          phone: string | null
         }
         Insert: {
-          created_at?: string
-          email: string
           id?: string
-          kennel_id: string
-          name: string
-          phone?: string | null
+          org_id: string
+          date: string
+          reason?: string | null
+          created_at?: string
         }
         Update: {
-          created_at?: string
-          email?: string
           id?: string
-          kennel_id?: string
-          name?: string
-          phone?: string | null
+          org_id?: string
+          date?: string
+          reason?: string | null
+          created_at?: string
         }
         Relationships: [
           {
-            foreignKeyName: "owners_kennel_id_fkey"
-            columns: ["kennel_id"]
+            foreignKeyName: "blackout_dates_org_id_fkey"
+            columns: ["org_id"]
             isOneToOne: false
-            referencedRelation: "kennels"
+            referencedRelation: "organisations"
             referencedColumns: ["id"]
           }
         ]
       }
       dogs: {
         Row: {
-          breed: string
-          created_at: string
           id: string
-          internal_notes: string | null
-          kennel_id: string
+          user_id: string
+          org_id: string
           name: string
-          owner_id: string
+          breed: string
           size_category: string
           vaccination_expiry_date: string | null
+          internal_notes: string | null
+          created_at: string
         }
         Insert: {
-          breed: string
-          created_at?: string
           id?: string
-          internal_notes?: string | null
-          kennel_id: string
+          user_id: string
+          org_id: string
           name: string
-          owner_id: string
+          breed: string
           size_category: string
           vaccination_expiry_date?: string | null
+          internal_notes?: string | null
+          created_at?: string
         }
         Update: {
-          breed?: string
-          created_at?: string
           id?: string
-          internal_notes?: string | null
-          kennel_id?: string
+          user_id?: string
+          org_id?: string
           name?: string
-          owner_id?: string
+          breed?: string
           size_category?: string
           vaccination_expiry_date?: string | null
+          internal_notes?: string | null
+          created_at?: string
         }
         Relationships: [
           {
-            foreignKeyName: "dogs_kennel_id_fkey"
-            columns: ["kennel_id"]
+            foreignKeyName: "dogs_org_id_fkey"
+            columns: ["org_id"]
             isOneToOne: false
-            referencedRelation: "kennels"
+            referencedRelation: "organisations"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "dogs_owner_id_fkey"
-            columns: ["owner_id"]
+            foreignKeyName: "dogs_user_id_fkey"
+            columns: ["user_id"]
             isOneToOne: false
-            referencedRelation: "owners"
+            referencedRelation: "user_profiles"
             referencedColumns: ["id"]
           }
         ]
       }
       booking_requests: {
         Row: {
-          availability_signal: Database["public"]["Enums"]["availability_signal"] | null
-          capacity_snapshot: Json | null
+          id: string
+          org_id: string
+          dog_id: string
+          user_id: string
           check_in_date: string
           check_out_date: string
-          contact_opt_in: boolean
-          created_at: string
-          dog_id: string
-          id: string
-          kennel_id: string
-          notes: string | null
-          owner_id: string
           status: Database["public"]["Enums"]["booking_status"]
+          availability_signal: Database["public"]["Enums"]["availability_signal"] | null
+          capacity_snapshot: Json | null
+          notes: string | null
+          created_at: string
           updated_at: string
         }
         Insert: {
-          availability_signal?: Database["public"]["Enums"]["availability_signal"] | null
-          capacity_snapshot?: Json | null
+          id?: string
+          org_id: string
+          dog_id: string
+          user_id: string
           check_in_date: string
           check_out_date: string
-          contact_opt_in?: boolean
-          created_at?: string
-          dog_id: string
-          id?: string
-          kennel_id: string
-          notes?: string | null
-          owner_id: string
           status?: Database["public"]["Enums"]["booking_status"]
+          availability_signal?: Database["public"]["Enums"]["availability_signal"] | null
+          capacity_snapshot?: Json | null
+          notes?: string | null
+          created_at?: string
           updated_at?: string
         }
         Update: {
-          availability_signal?: Database["public"]["Enums"]["availability_signal"] | null
-          capacity_snapshot?: Json | null
+          id?: string
+          org_id?: string
+          dog_id?: string
+          user_id?: string
           check_in_date?: string
           check_out_date?: string
-          contact_opt_in?: boolean
-          created_at?: string
-          dog_id?: string
-          id?: string
-          kennel_id?: string
-          notes?: string | null
-          owner_id?: string
           status?: Database["public"]["Enums"]["booking_status"]
+          availability_signal?: Database["public"]["Enums"]["availability_signal"] | null
+          capacity_snapshot?: Json | null
+          notes?: string | null
+          created_at?: string
           updated_at?: string
         }
         Relationships: [
@@ -288,45 +265,45 @@ export interface Database {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "booking_requests_kennel_id_fkey"
-            columns: ["kennel_id"]
+            foreignKeyName: "booking_requests_org_id_fkey"
+            columns: ["org_id"]
             isOneToOne: false
-            referencedRelation: "kennels"
+            referencedRelation: "organisations"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "booking_requests_owner_id_fkey"
-            columns: ["owner_id"]
+            foreignKeyName: "booking_requests_user_id_fkey"
+            columns: ["user_id"]
             isOneToOne: false
-            referencedRelation: "owners"
+            referencedRelation: "user_profiles"
             referencedColumns: ["id"]
           }
         ]
       }
       internal_notes: {
         Row: {
-          booking_request_id: string
-          created_at: string
-          created_by: string | null
           id: string
-          kennel_id: string
+          org_id: string
+          booking_request_id: string
+          created_by: string | null
           note: string
+          created_at: string
         }
         Insert: {
-          booking_request_id: string
-          created_at?: string
-          created_by?: string | null
           id?: string
-          kennel_id: string
+          org_id: string
+          booking_request_id: string
+          created_by?: string | null
           note: string
+          created_at?: string
         }
         Update: {
-          booking_request_id?: string
-          created_at?: string
-          created_by?: string | null
           id?: string
-          kennel_id?: string
+          org_id?: string
+          booking_request_id?: string
+          created_by?: string | null
           note?: string
+          created_at?: string
         }
         Relationships: [
           {
@@ -337,10 +314,10 @@ export interface Database {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "internal_notes_kennel_id_fkey"
-            columns: ["kennel_id"]
+            foreignKeyName: "internal_notes_org_id_fkey"
+            columns: ["org_id"]
             isOneToOne: false
-            referencedRelation: "kennels"
+            referencedRelation: "organisations"
             referencedColumns: ["id"]
           }
         ]

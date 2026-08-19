@@ -20,12 +20,13 @@ export async function GET(
   }
 
   const { data: profile } = await supabase
-    .from("staff_profiles")
-    .select("kennel_id")
-    .eq("user_id", user.id)
+    .from("user_profiles")
+    .select("org_id")
+    .eq("id", user.id)
+    .eq("type", "operator")
     .single()
 
-  if (!profile) {
+  if (!profile || !profile.org_id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
@@ -35,7 +36,7 @@ export async function GET(
     .select(
       `
       id,
-      kennel_id,
+      org_id,
       status,
       check_in_date,
       check_out_date,
@@ -44,7 +45,7 @@ export async function GET(
       capacity_snapshot,
       notes,
       dog_id,
-      owner_id
+      user_id
     `,
     )
     .eq("id", requestId)
@@ -61,7 +62,7 @@ export async function GET(
     return NextResponse.json({ error: "Not found" }, { status: 404 })
   }
 
-  if (request.kennel_id !== profile.kennel_id) {
+  if (request.org_id !== profile.org_id) {
     return NextResponse.json({ error: "Request belongs to another kennel" }, { status: 403 })
   }
 
@@ -78,17 +79,25 @@ export async function GET(
     )
   }
 
-  const { data: owner, error: ownerError } = await serviceRole
-    .from("owners")
-    .select("name, email, phone")
-    .eq("id", request.owner_id)
+  const { data: ownerProfile, error: ownerError } = await serviceRole
+    .from("user_profiles")
+    .select("full_name, phone")
+    .eq("id", request.user_id)
     .single()
 
-  if (ownerError || !owner) {
+  if (ownerError || !ownerProfile) {
     return NextResponse.json(
       { error: "Could not load request", detail: ownerError?.message ?? "Missing owner record" },
       { status: 400 },
     )
+  }
+
+  // Owner email lives only in auth.users, not user_profiles.
+  const { data: ownerAuth } = await serviceRole.auth.admin.getUserById(request.user_id)
+  const owner = {
+    name: ownerProfile.full_name ?? "Unknown owner",
+    email: ownerAuth?.user?.email ?? "",
+    phone: ownerProfile.phone,
   }
 
   const { data: notes, error: notesError } = await serviceRole
@@ -135,12 +144,13 @@ export async function PATCH(
   }
 
   const { data: profile } = await supabase
-    .from("staff_profiles")
-    .select("kennel_id")
-    .eq("user_id", user.id)
+    .from("user_profiles")
+    .select("org_id")
+    .eq("id", user.id)
+    .eq("type", "operator")
     .single()
 
-  if (!profile) {
+  if (!profile || !profile.org_id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
@@ -152,7 +162,7 @@ export async function PATCH(
   const { error } = await supabase
     .from("booking_requests")
     .update({ status })
-    .eq("kennel_id", profile.kennel_id)
+    .eq("org_id", profile.org_id)
     .eq("id", requestId)
 
   if (error) {

@@ -5,7 +5,6 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Switch } from "@/components/ui/switch"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { Copy, ExternalLink } from "lucide-react"
@@ -19,9 +18,6 @@ type SettingsResponse = {
     phone: string | null
     postcode: string
     slug: string
-    notifyNewRequest: boolean
-    notifyAccepted: boolean
-    notifyRejected: boolean
   }
   userEmail: string | null
 }
@@ -33,14 +29,10 @@ export default function SettingsPage() {
   const [kennelPhone, setKennelPhone] = useState("")
   const [kennelPostcode, setKennelPostcode] = useState("")
   const [kennelSlug, setKennelSlug] = useState("")
-  const [notifyNew, setNotifyNew] = useState(false)
-  const [notifyAccepted, setNotifyAccepted] = useState(false)
-  const [notifyRejected, setNotifyRejected] = useState(false)
   const [userEmail, setUserEmail] = useState<string | null>(null)
   const [origin] = useState(() => (typeof window !== "undefined" ? window.location.origin : ""))
   const [loading, setLoading] = useState(true)
   const [savingProfile, setSavingProfile] = useState(false)
-  const [savingNotifications, setSavingNotifications] = useState(false)
   const [error, setError] = useState("")
 
   useEffect(() => {
@@ -63,9 +55,6 @@ export default function SettingsPage() {
       setKennelPhone(data.kennel.phone ?? "")
       setKennelPostcode(data.kennel.postcode)
       setKennelSlug(data.kennel.slug)
-      setNotifyNew(data.kennel.notifyNewRequest)
-      setNotifyAccepted(data.kennel.notifyAccepted)
-      setNotifyRejected(data.kennel.notifyRejected)
       setUserEmail(data.userEmail)
       setLoading(false)
     }
@@ -130,35 +119,6 @@ export default function SettingsPage() {
       description: "Your kennel profile has been saved.",
     })
     setSavingProfile(false)
-  }
-
-  async function saveNotifications() {
-    setSavingNotifications(true)
-    const response = await fetch("/api/staff/settings", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        notifyNewRequest: notifyNew,
-        notifyAccepted: notifyAccepted,
-        notifyRejected: notifyRejected,
-      }),
-    })
-
-    if (!response.ok) {
-      toast({
-        title: "Could not save preferences",
-        description: "Please try again.",
-        variant: "destructive",
-      })
-      setSavingNotifications(false)
-      return
-    }
-
-    toast({
-      title: "Preferences saved",
-      description: "Your notification preferences have been updated.",
-    })
-    setSavingNotifications(false)
   }
 
   return (
@@ -261,63 +221,6 @@ export default function SettingsPage() {
               </div>
               <Button onClick={saveKennelProfile} disabled={loading || savingProfile}>
                 {savingProfile ? "Saving..." : "Save profile"}
-              </Button>
-            </CardContent>
-          </Card>
-
-          {/* Notifications */}
-          <Card className="border-border">
-            <CardHeader>
-              <CardTitle className="text-lg">Email notifications</CardTitle>
-              <CardDescription>Choose when to receive email notifications</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label htmlFor="notify-new" className="text-base">
-                    New booking requests
-                  </Label>
-                  <p className="text-sm text-muted-foreground">Get notified when a new request is submitted</p>
-                </div>
-                <Switch
-                  id="notify-new"
-                  checked={notifyNew}
-                  onCheckedChange={setNotifyNew}
-                  disabled={loading || savingNotifications}
-                />
-              </div>
-              <Separator />
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label htmlFor="notify-accepted" className="text-base">
-                    Request accepted
-                  </Label>
-                  <p className="text-sm text-muted-foreground">Confirmation when you accept a booking</p>
-                </div>
-                <Switch
-                  id="notify-accepted"
-                  checked={notifyAccepted}
-                  onCheckedChange={setNotifyAccepted}
-                  disabled={loading || savingNotifications}
-                />
-              </div>
-              <Separator />
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label htmlFor="notify-rejected" className="text-base">
-                    Request rejected
-                  </Label>
-                  <p className="text-sm text-muted-foreground">Confirmation when you reject a booking</p>
-                </div>
-                <Switch
-                  id="notify-rejected"
-                  checked={notifyRejected}
-                  onCheckedChange={setNotifyRejected}
-                  disabled={loading || savingNotifications}
-                />
-              </div>
-              <Button onClick={saveNotifications} disabled={loading || savingNotifications}>
-                {savingNotifications ? "Saving..." : "Save preferences"}
               </Button>
             </CardContent>
           </Card>

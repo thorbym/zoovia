@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { createServiceRoleSupabaseClient } from "@/lib/supabase/clients"
 import { computeAvailabilitySignal } from "@/lib/capacity"
+import { getUserFromRequest } from "@/lib/auth"
 
 type BookingPayload = {
   kennelSlug: string
@@ -11,10 +12,8 @@ type BookingPayload = {
   sizeCategory: "small" | "medium" | "large"
   vaccinationExpiryDate?: string | null
   ownerName: string
-  ownerEmail: string
   ownerPhone?: string | null
   notes?: string | null
-  contactOptIn?: boolean
 }
 
 export async function POST(request: Request) {
@@ -28,7 +27,6 @@ export async function POST(request: Request) {
     "breed",
     "sizeCategory",
     "ownerName",
-    "ownerEmail",
   ] as const
 
   for (const field of required) {
@@ -45,9 +43,13 @@ export async function POST(request: Request) {
 
   const supabase = createServiceRoleSupabaseClient()
 
-  const { data: kennel } = await supabase.from("kennels").select("id, slug").eq("slug", body.kennelSlug).single()
+  const { data: organisation } = await supabase
+    .from("organisations")
+    .select("id, slug")
+    .eq("slug", body.kennelSlug)
+    .single()
 
-  if (!kennel) {
+  if (!organisation) {
     return NextResponse.json({ error: "Kennel not found" }, { status: 404 })
   }
 
@@ -57,7 +59,7 @@ export async function POST(request: Request) {
   const { data: capacity } = await supabase
     .from("capacity_settings")
     .select("min_notice_days")
-    .eq("kennel_id", kennel.id)
+    .eq("org_id", organisation.id)
     .maybeSingle()
 
   if (capacity?.min_notice_days) {
@@ -70,7 +72,7 @@ export async function POST(request: Request) {
 
   const { availability, currentBookings, maxCapacity, blackoutDates } = await computeAvailabilitySignal(
     supabase,
-    kennel.id,
+    organisation.id,
     body.checkInDate!,
     body.checkOutDate!,
   )
@@ -79,36 +81,44 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Dates unavailable", availability }, { status: 409 })
   }
 
-  const { data: owner, error: ownerError } = await supabase
-    .from("owners")
-    .upsert(
-      {
-        kennel_id: kennel.id,
-        name: body.ownerName!,
-        email: body.ownerEmail!,
-        phone: body.ownerPhone ?? null,
-      },
-      { onConflict: "kennel_id,email" },
-    )
-    .select("id")
-    .single()
+  // Dogs and booking requests carry a real user_id — there is no anonymous
+  // submission path. The form gates on sign up/sign in before this point.
+  const user = await getUserFromRequest(request)
+  if (!user) {
+    return NextResponse.json({ error: "Sign in required" }, { status: 401 })
+  }
 
-  if (ownerError || !owner) {
-    return NextResponse.json({ error: "Could not save owner" }, { status: 400 })
+  const { data: existingProfile } = await supabase
+    .from("user_profiles")
+    .select("id")
+    .eq("id", user.id)
+    .maybeSingle()
+
+  if (!existingProfile) {
+    const { error: profileError } = await supabase.from("user_profiles").insert({
+      id: user.id,
+      type: "owner",
+      full_name: body.ownerName!,
+      phone: body.ownerPhone ?? null,
+    })
+
+    if (profileError) {
+      return NextResponse.json({ error: "Could not save owner profile" }, { status: 400 })
+    }
   }
 
   const { data: dog, error: dogError } = await supabase
     .from("dogs")
     .upsert(
       {
-        kennel_id: kennel.id,
-        owner_id: owner.id,
+        org_id: organisation.id,
+        user_id: user.id,
         name: body.dogName!,
         breed: body.breed!,
         size_category: body.sizeCategory!,
         vaccination_expiry_date: body.vaccinationExpiryDate ?? null,
       },
-      { onConflict: "kennel_id,owner_id,name" },
+      { onConflict: "user_id,name" },
     )
     .select("id")
     .single()
@@ -120,9 +130,9 @@ export async function POST(request: Request) {
   const { data: booking, error: bookingError } = await supabase
     .from("booking_requests")
     .insert({
-      kennel_id: kennel.id,
+      org_id: organisation.id,
       dog_id: dog.id,
-      owner_id: owner.id,
+      user_id: user.id,
       check_in_date: body.checkInDate!,
       check_out_date: body.checkOutDate!,
       status: "new",
@@ -133,7 +143,6 @@ export async function POST(request: Request) {
         blackout_dates: blackoutDates,
       },
       notes: body.notes ?? null,
-      contact_opt_in: Boolean(body.contactOptIn),
     })
     .select("id")
     .single()

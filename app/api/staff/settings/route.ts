@@ -6,9 +6,6 @@ type SettingsPayload = {
   contactEmail?: string
   phone?: string | null
   postcode?: string
-  notifyNewRequest?: boolean
-  notifyAccepted?: boolean
-  notifyRejected?: boolean
 }
 
 export async function GET() {
@@ -22,38 +19,34 @@ export async function GET() {
   }
 
   const { data: profile, error: profileError } = await supabase
-    .from("staff_profiles")
-    .select("kennel_id")
-    .eq("user_id", user.id)
+    .from("user_profiles")
+    .select("org_id")
+    .eq("id", user.id)
+    .eq("type", "operator")
     .single()
 
-  if (profileError || !profile) {
+  if (profileError || !profile || !profile.org_id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
-  const { data: kennel, error: kennelError } = await supabase
-    .from("kennels")
-    .select(
-      "id, name, contact_email, phone, postcode, slug, notify_new_request, notify_accepted, notify_rejected",
-    )
-    .eq("id", profile.kennel_id)
+  const { data: organisation, error: orgError } = await supabase
+    .from("organisations")
+    .select("id, name, contact_email, telephone, postcode, slug")
+    .eq("id", profile.org_id)
     .single()
 
-  if (kennelError || !kennel) {
+  if (orgError || !organisation) {
     return NextResponse.json({ error: "Could not load settings" }, { status: 400 })
   }
 
   return NextResponse.json({
     kennel: {
-      id: kennel.id,
-      name: kennel.name,
-      contactEmail: kennel.contact_email,
-      phone: kennel.phone,
-      postcode: kennel.postcode,
-      slug: kennel.slug,
-      notifyNewRequest: kennel.notify_new_request,
-      notifyAccepted: kennel.notify_accepted,
-      notifyRejected: kennel.notify_rejected,
+      id: organisation.id,
+      name: organisation.name,
+      contactEmail: organisation.contact_email,
+      phone: organisation.telephone,
+      postcode: organisation.postcode,
+      slug: organisation.slug,
     },
     userEmail: user.email ?? null,
   })
@@ -70,17 +63,18 @@ export async function PATCH(request: Request) {
   }
 
   const { data: profile, error: profileError } = await supabase
-    .from("staff_profiles")
-    .select("kennel_id")
-    .eq("user_id", user.id)
+    .from("user_profiles")
+    .select("org_id")
+    .eq("id", user.id)
+    .eq("type", "operator")
     .single()
 
-  if (profileError || !profile) {
+  if (profileError || !profile || !profile.org_id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
   const body = (await request.json()) as SettingsPayload
-  const updates: Record<string, string | boolean | null> = {}
+  const updates: Record<string, string | null> = {}
 
   if (typeof body.name === "string") {
     const trimmed = body.name.trim()
@@ -100,9 +94,9 @@ export async function PATCH(request: Request) {
 
   if (typeof body.phone === "string") {
     const trimmed = body.phone.trim()
-    updates.phone = trimmed.length === 0 ? null : trimmed
+    updates.telephone = trimmed.length === 0 ? null : trimmed
   } else if (body.phone === null) {
-    updates.phone = null
+    updates.telephone = null
   }
 
   if (typeof body.postcode === "string") {
@@ -113,46 +107,31 @@ export async function PATCH(request: Request) {
     updates.postcode = trimmed
   }
 
-  if (typeof body.notifyNewRequest === "boolean") {
-    updates.notify_new_request = body.notifyNewRequest
-  }
-  if (typeof body.notifyAccepted === "boolean") {
-    updates.notify_accepted = body.notifyAccepted
-  }
-  if (typeof body.notifyRejected === "boolean") {
-    updates.notify_rejected = body.notifyRejected
-  }
-
   if (Object.keys(updates).length === 0) {
     return NextResponse.json({ error: "No updates provided" }, { status: 400 })
   }
 
   updates.updated_at = new Date().toISOString()
 
-  const { data: kennel, error: updateError } = await supabase
-    .from("kennels")
+  const { data: organisation, error: updateError } = await supabase
+    .from("organisations")
     .update(updates)
-    .eq("id", profile.kennel_id)
-    .select(
-      "id, name, contact_email, phone, postcode, slug, notify_new_request, notify_accepted, notify_rejected",
-    )
+    .eq("id", profile.org_id)
+    .select("id, name, contact_email, telephone, postcode, slug")
     .single()
 
-  if (updateError || !kennel) {
+  if (updateError || !organisation) {
     return NextResponse.json({ error: "Could not save settings" }, { status: 400 })
   }
 
   return NextResponse.json({
     kennel: {
-      id: kennel.id,
-      name: kennel.name,
-      contactEmail: kennel.contact_email,
-      phone: kennel.phone,
-      postcode: kennel.postcode,
-      slug: kennel.slug,
-      notifyNewRequest: kennel.notify_new_request,
-      notifyAccepted: kennel.notify_accepted,
-      notifyRejected: kennel.notify_rejected,
+      id: organisation.id,
+      name: organisation.name,
+      contactEmail: organisation.contact_email,
+      phone: organisation.telephone,
+      postcode: organisation.postcode,
+      slug: organisation.slug,
     },
   })
 }

@@ -21,19 +21,20 @@ export async function DELETE(
   }
 
   const { data: profile, error: profileError } = await supabase
-    .from("staff_profiles")
-    .select("kennel_id")
-    .eq("user_id", user.id)
+    .from("user_profiles")
+    .select("org_id")
+    .eq("id", user.id)
+    .eq("type", "operator")
     .single()
 
-  if (profileError || !profile) {
+  if (profileError || !profile || !profile.org_id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
   const { data: blackout, error } = await supabase
     .from("blackout_dates")
     .delete()
-    .eq("kennel_id", profile.kennel_id)
+    .eq("org_id", profile.org_id)
     .eq("id", blackoutId)
     .select("id")
     .maybeSingle()

@@ -29,11 +29,11 @@ export default async function ConfirmationPage({
   } else {
     const supabase = await createSupabaseServerClient()
     const { data } = await supabase
-      .from("kennels")
-      .select("name, slug, phone, contact_email")
+      .from("organisations")
+      .select("name, slug, telephone, contact_email")
       .ilike("slug", slug)
       .single()
-    kennel = data ?? null
+    kennel = data ? { name: data.name, slug: data.slug, phone: data.telephone, contact_email: data.contact_email } : null
   }
 
   if (!kennel) {

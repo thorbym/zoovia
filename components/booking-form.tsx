@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -10,41 +10,42 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent } from "@/components/ui/card"
-import { Calendar } from "lucide-react"
+import { Calendar, ArrowLeft } from "lucide-react"
+import { createSupabaseBrowserClient } from "@/lib/supabase/browser-client"
+
+type BookingPayload = {
+  kennelSlug: string
+  checkInDate: string
+  checkOutDate: string
+  dogName: string
+  breed: string
+  sizeCategory: string
+  vaccinationExpiryDate: string | null
+  ownerName: string
+  ownerEmail: string
+  ownerPhone: string
+  notes: string | null
+}
 
 export function BookingForm({ kennelSlug }: { kennelSlug: string }) {
   const router = useRouter()
+  const supabase = createSupabaseBrowserClient()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState("")
   const [size, setSize] = useState("")
+  const [step, setStep] = useState<"details" | "auth" | "confirm-email">("details")
+  const [pendingPayload, setPendingPayload] = useState<BookingPayload | null>(null)
+  const [authMode, setAuthMode] = useState<"signup" | "signin">("signup")
+  const [password, setPassword] = useState("")
+  const [isSignedIn, setIsSignedIn] = useState(false)
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    setIsSubmitting(true)
-    setError("")
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      setIsSignedIn(Boolean(data.session))
+    })
+  }, [supabase])
 
-    const formData = new FormData(e.currentTarget)
-
-    if (!size) {
-      setError("Please select a size.")
-      setIsSubmitting(false)
-      return
-    }
-
-    const payload = {
-      kennelSlug,
-      checkInDate: formData.get("check-in") as string,
-      checkOutDate: formData.get("check-out") as string,
-      dogName: formData.get("dog-name") as string,
-      breed: formData.get("breed") as string,
-      sizeCategory: size,
-      vaccinationExpiryDate: (formData.get("vaccination-expiry") as string) || null,
-      ownerName: formData.get("owner-name") as string,
-      ownerEmail: formData.get("email") as string,
-      ownerPhone: formData.get("phone") as string,
-      notes: (formData.get("notes") as string) || null,
-    }
-
+  async function submitBooking(payload: BookingPayload) {
     const response = await fetch("/api/public/bookings", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -61,6 +62,166 @@ export function BookingForm({ kennelSlug }: { kennelSlug: string }) {
     router.push(`/book/${kennelSlug}/confirmation`)
   }
 
+  async function handleDetailsSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    setIsSubmitting(true)
+    setError("")
+
+    const formData = new FormData(e.currentTarget)
+
+    if (!size) {
+      setError("Please select a size.")
+      setIsSubmitting(false)
+      return
+    }
+
+    const payload: BookingPayload = {
+      kennelSlug,
+      checkInDate: formData.get("check-in") as string,
+      checkOutDate: formData.get("check-out") as string,
+      dogName: formData.get("dog-name") as string,
+      breed: formData.get("breed") as string,
+      sizeCategory: size,
+      vaccinationExpiryDate: (formData.get("vaccination-expiry") as string) || null,
+      ownerName: formData.get("owner-name") as string,
+      ownerEmail: formData.get("email") as string,
+      ownerPhone: formData.get("phone") as string,
+      notes: (formData.get("notes") as string) || null,
+    }
+
+    if (isSignedIn) {
+      await submitBooking(payload)
+      return
+    }
+
+    setPendingPayload(payload)
+    setStep("auth")
+    setIsSubmitting(false)
+  }
+
+  async function handleAuthSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    if (!pendingPayload) return
+    setIsSubmitting(true)
+    setError("")
+
+    if (authMode === "signup") {
+      const { data, error: signUpError } = await supabase.auth.signUp({
+        email: pendingPayload.ownerEmail,
+        password,
+      })
+
+      if (signUpError) {
+        setError(signUpError.message)
+        setIsSubmitting(false)
+        return
+      }
+
+      if (!data.session) {
+        // Email confirmation is required before a session is issued.
+        setStep("confirm-email")
+        setIsSubmitting(false)
+        return
+      }
+    } else {
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: pendingPayload.ownerEmail,
+        password,
+      })
+
+      if (signInError) {
+        setError(signInError.message)
+        setIsSubmitting(false)
+        return
+      }
+    }
+
+    await submitBooking(pendingPayload)
+  }
+
+  if (step === "confirm-email") {
+    return (
+      <Card className="border-border">
+        <CardContent className="p-6 sm:p-8 text-center space-y-3">
+          <h2 className="text-xl font-semibold text-card-foreground">Check your email</h2>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            We&apos;ve sent a confirmation link to {pendingPayload?.ownerEmail}. Confirm your account, then come back
+            and sign in to finish submitting your booking request.
+          </p>
+          <Button variant="outline" onClick={() => setStep("auth")} className="bg-transparent">
+            Back
+          </Button>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  if (step === "auth" && pendingPayload) {
+    return (
+      <Card className="border-border">
+        <CardContent className="p-6 sm:p-8">
+          <button
+            type="button"
+            onClick={() => setStep("details")}
+            className="mb-4 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to form
+          </button>
+          <div className="mb-6">
+            <h2 className="text-xl font-semibold text-card-foreground text-balance">
+              {authMode === "signup" ? "Create your account to submit" : "Sign in to submit"}
+            </h2>
+            <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
+              We keep a Zoovia account for you so you can track this request and book faster next time.
+            </p>
+          </div>
+
+          <form onSubmit={handleAuthSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label>Email</Label>
+              <Input value={pendingPayload.ownerEmail} disabled />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">
+                Password <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                minLength={8}
+              />
+            </div>
+
+            {error && (
+              <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3">
+                <p className="text-sm text-destructive">{error}</p>
+              </div>
+            )}
+
+            <Button type="submit" size="lg" className="w-full" disabled={isSubmitting}>
+              {isSubmitting ? "Submitting..." : authMode === "signup" ? "Create account & submit" : "Sign in & submit"}
+            </Button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setAuthMode(authMode === "signup" ? "signin" : "signup")
+                setError("")
+              }}
+              className="w-full text-center text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              {authMode === "signup" ? "Already have a Zoovia account? Sign in" : "New to Zoovia? Create an account"}
+            </button>
+          </form>
+        </CardContent>
+      </Card>
+    )
+  }
+
   return (
     <Card className="border-border">
       <CardContent className="p-6 sm:p-8">
@@ -71,7 +232,7 @@ export function BookingForm({ kennelSlug }: { kennelSlug: string }) {
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleDetailsSubmit} className="space-y-6">
           {/* Dates */}
           <div className="space-y-4">
             <h3 className="text-sm font-medium text-card-foreground">Your dates</h3>
@@ -184,7 +345,7 @@ export function BookingForm({ kennelSlug }: { kennelSlug: string }) {
           )}
 
           <Button type="submit" size="lg" className="w-full sm:w-auto" disabled={isSubmitting}>
-            {isSubmitting ? "Submitting..." : "Submit booking request"}
+            {isSubmitting ? "Submitting..." : isSignedIn ? "Submit booking request" : "Continue"}
           </Button>
         </form>
       </CardContent>
