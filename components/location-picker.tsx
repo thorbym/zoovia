@@ -11,11 +11,38 @@ export interface PickedLocation {
   lng: number
 }
 
-interface NominatimResult {
-  place_id: number
-  display_name: string
-  lat: string
-  lon: string
+interface PhotonProperties {
+  osm_id: number
+  name?: string
+  city?: string
+  county?: string
+  state?: string
+  country?: string
+  countrycode?: string
+}
+
+interface PhotonFeature {
+  properties: PhotonProperties
+  geometry: { coordinates: [number, number] }
+}
+
+interface PhotonResponse {
+  features: PhotonFeature[]
+}
+
+// Roughly UK + Ireland; countrycode filter below narrows to Great Britain only.
+const UK_BBOX = "-8.65,49.82,1.76,60.85"
+
+function formatLabel(p: PhotonProperties): string {
+  const parts: string[] = []
+  const seen = new Set<string>()
+  for (const value of [p.name, p.city, p.county, p.state, p.country]) {
+    if (value && !seen.has(value)) {
+      seen.add(value)
+      parts.push(value)
+    }
+  }
+  return parts.join(", ")
 }
 
 interface LocationPickerProps {
@@ -34,7 +61,7 @@ export function LocationPicker({
   className,
 }: LocationPickerProps) {
   const [text, setText] = useState(defaultValue?.label ?? "")
-  const [suggestions, setSuggestions] = useState<NominatimResult[]>([])
+  const [suggestions, setSuggestions] = useState<PhotonFeature[]>([])
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [locationLoading, setLocationLoading] = useState(false)
 
@@ -50,13 +77,14 @@ export function LocationPicker({
 
     try {
       const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=5&countrycodes=gb&q=${encodeURIComponent(query)}`,
+        `https://photon.komoot.io/api/?lang=en&limit=8&bbox=${UK_BBOX}&q=${encodeURIComponent(query)}`,
       )
-      const results: NominatimResult[] = await response.json()
+      const data: PhotonResponse = await response.json()
+      const results = data.features.filter((f) => f.properties.countrycode === "GB").slice(0, 5)
       setSuggestions(results)
       setShowSuggestions(results.length > 0)
     } catch (error) {
-      console.log("[location-picker] Nominatim search failed:", error)
+      console.log("[location-picker] Photon search failed:", error)
       setSuggestions([])
       setShowSuggestions(false)
     }
@@ -75,15 +103,13 @@ export function LocationPicker({
     }, 300)
   }
 
-  const handleSuggestionClick = (suggestion: NominatimResult) => {
-    setText(suggestion.display_name)
+  const handleSuggestionClick = (suggestion: PhotonFeature) => {
+    const label = formatLabel(suggestion.properties)
+    const [lng, lat] = suggestion.geometry.coordinates
+    setText(label)
     setSuggestions([])
     setShowSuggestions(false)
-    onChange({
-      label: suggestion.display_name,
-      lat: Number(suggestion.lat),
-      lng: Number(suggestion.lon),
-    })
+    onChange({ label, lat, lng })
   }
 
   const handleGetLocation = () => {
@@ -98,11 +124,11 @@ export function LocationPicker({
         const { latitude, longitude } = position.coords
 
         try {
-          const response = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&addressdetails=1`,
-          )
-          const result = await response.json()
-          const label: string = result?.display_name ?? `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`
+          const response = await fetch(`https://photon.komoot.io/reverse?lang=en&lat=${latitude}&lon=${longitude}`)
+          const data: PhotonResponse = await response.json()
+          const label = data.features[0]
+            ? formatLabel(data.features[0].properties)
+            : `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`
 
           setText(label)
           setSuggestions([])
@@ -180,12 +206,12 @@ export function LocationPicker({
         <div className="absolute top-full left-0 right-0 bg-background border-2 border-accent/20 rounded-md shadow-lg z-10 max-h-60 overflow-y-auto">
           {suggestions.map((suggestion) => (
             <button
-              key={suggestion.place_id}
+              key={suggestion.properties.osm_id}
               type="button"
               onClick={() => handleSuggestionClick(suggestion)}
               className="w-full text-left px-4 py-3 hover:bg-accent/10 transition-colors border-b border-border/50 last:border-b-0"
             >
-              <div className="text-sm text-foreground">{suggestion.display_name}</div>
+              <div className="text-sm text-foreground">{formatLabel(suggestion.properties)}</div>
             </button>
           ))}
         </div>
