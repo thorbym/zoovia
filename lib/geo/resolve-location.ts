@@ -7,7 +7,7 @@ const POSTCODE_RE = /^[A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2}$/i
 const OUTCODE_RE = /^[A-Z]{1,2}\d[A-Z\d]?$/i
 
 async function getJson<T>(url: string): Promise<T | null> {
-  const response = await fetch(url)
+  const response = await fetch(url, { next: { revalidate: 86400 } })
   if (!response.ok) return null
   return response.json()
 }
