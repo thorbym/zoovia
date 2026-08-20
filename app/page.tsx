@@ -3,7 +3,7 @@
 import type React from "react"
 import type { google } from "googlemaps"
 
-import { useState, useEffect, useRef } from "react"
+import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -11,90 +11,27 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent } from "@/components/ui/card"
 import { WaitlistModal } from "@/components/waitlist-modal"
 import { KennelOwnerModal } from "@/components/kennel-owner-modal"
-import { MapPin, Calendar, Shield, Clock, Heart, Star, ArrowRight, Crosshair as Crosshairs } from "lucide-react"
-
-interface NominatimResult {
-  place_id: number
-  display_name: string
-  lat: string
-  lon: string
-}
+import { LocationPicker, type PickedLocation } from "@/components/location-picker"
+import { MapPin, Calendar, Shield, Clock, Heart, Star, ArrowRight } from "lucide-react"
 
 export default function HomePage() {
   const router = useRouter()
-  const [location, setLocation] = useState("")
+  const [place, setPlace] = useState<PickedLocation | null>(null)
+  const [locationError, setLocationError] = useState(false)
   const [checkIn, setCheckIn] = useState("")
   const [checkOut, setCheckOut] = useState("")
   const [showWaitlist, setShowWaitlist] = useState(false)
   const [showKennelOwnerModal, setShowKennelOwnerModal] = useState(false)
-  const [locationLoading, setLocationLoading] = useState(false)
-  const [locationSuggestions, setLocationSuggestions] = useState<NominatimResult[]>([])
-  const [showSuggestions, setShowSuggestions] = useState(false)
-
-  const locationInputRef = useRef<HTMLInputElement>(null)
-  const debounceTimerRef = useRef<NodeJS.Timeout>()
 
   const today = new Date().toISOString().split("T")[0]
 
-  const searchLocations = async (query: string) => {
-    if (query.length < 3) {
-      setLocationSuggestions([])
-      setShowSuggestions(false)
-      return
-    }
-
-    try {
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=5&countrycodes=gb&q=${encodeURIComponent(query)}`,
-      )
-      const results: NominatimResult[] = await response.json()
-      setLocationSuggestions(results)
-      setShowSuggestions(results.length > 0)
-    } catch (error) {
-      console.log("[v0] Nominatim search failed:", error)
-      setLocationSuggestions([])
-      setShowSuggestions(false)
-    }
-  }
-
-  const handleLocationChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value
-    setLocation(value)
-
-    // Clear existing timer
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current)
-    }
-
-    // Set new timer for debounced search
-    debounceTimerRef.current = setTimeout(() => {
-      searchLocations(value)
-    }, 300)
-  }
-
-  const handleSuggestionClick = (suggestion: NominatimResult) => {
-    setLocation(suggestion.display_name)
-    setLocationSuggestions([])
-    setShowSuggestions(false)
-  }
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (locationInputRef.current && !locationInputRef.current.contains(event.target as Node)) {
-        setShowSuggestions(false)
-      }
-    }
-
-    document.addEventListener("mousedown", handleClickOutside)
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside)
-    }
-  }, [])
-
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!location.trim()) return
-    router.push(`/kennels?q=${encodeURIComponent(location.trim())}`)
+    if (!place) {
+      setLocationError(true)
+      return
+    }
+    router.push(`/kennels?lat=${place.lat}&lng=${place.lng}&label=${encodeURIComponent(place.label)}`)
   }
 
   /*
@@ -150,59 +87,6 @@ export default function HomePage() {
     e.target.min = minDate
   }
 */
-  const handleGetLocation = () => {
-    if (!navigator.geolocation) {
-      alert("Geolocation is not supported by this browser.")
-      return
-    }
-
-    setLocationLoading(true)
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const { latitude, longitude } = position.coords
-
-        try {
-          const response = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&addressdetails=1`,
-          )
-          const result = await response.json()
-
-          if (result && result.display_name) {
-            setLocation(result.display_name)
-          } else {
-            setLocation(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`)
-          }
-        } catch (error) {
-          console.log("[v0] Reverse geocoding failed:", error)
-          setLocation(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`)
-        } finally {
-          setLocationLoading(false)
-        }
-      },
-      (error) => {
-        setLocationLoading(false)
-        switch (error.code) {
-          case error.PERMISSION_DENIED:
-            alert("Location access denied by user.")
-            break
-          case error.POSITION_UNAVAILABLE:
-            alert("Location information is unavailable.")
-            break
-          case error.TIMEOUT:
-            alert("Location request timed out.")
-            break
-          default:
-            alert("An unknown error occurred while retrieving location.")
-            break
-        }
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 60000,
-      },
-    )
-  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -251,41 +135,18 @@ export default function HomePage() {
                       <MapPin className="w-4 h-4 text-accent" />
                       Location
                     </Label>
-                    <div className="relative" ref={locationInputRef}>
-                      <Input
-                        id="location"
-                        placeholder="Enter place"
-                        value={location}
-                        onChange={handleLocationChange}
-                        onFocus={() => location.length >= 3 && setShowSuggestions(locationSuggestions.length > 0)}
-                        required
-                        className="border-2 border-border focus:border-accent transition-colors pr-12"
-                      />
-                      <button
-                        type="button"
-                        onClick={handleGetLocation}
-                        disabled={locationLoading}
-                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-accent hover:text-accent/80 transition-colors disabled:opacity-50"
-                        title="Use my current location"
-                      >
-                        <Crosshairs className={`w-5 h-5 ${locationLoading ? "animate-spin" : ""}`} />
-                      </button>
-
-                      {showSuggestions && locationSuggestions.length > 0 && (
-                        <div className="absolute top-full left-0 right-0 bg-background border-2 border-accent/20 rounded-md shadow-lg z-10 max-h-60 overflow-y-auto">
-                          {locationSuggestions.map((suggestion) => (
-                            <button
-                              key={suggestion.place_id}
-                              type="button"
-                              onClick={() => handleSuggestionClick(suggestion)}
-                              className="w-full text-left px-4 py-3 hover:bg-accent/10 transition-colors border-b border-border/50 last:border-b-0"
-                            >
-                              <div className="text-sm text-foreground">{suggestion.display_name}</div>
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
+                    <LocationPicker
+                      id="location"
+                      placeholder="Enter place"
+                      defaultValue={place}
+                      onChange={(value) => {
+                        setPlace(value)
+                        if (value) setLocationError(false)
+                      }}
+                    />
+                    {locationError && (
+                      <p className="text-sm text-destructive">Select a location from the suggestions list.</p>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="checkin" className="flex items-center gap-2 font-medium text-foreground">
@@ -552,7 +413,7 @@ export default function HomePage() {
         open={showWaitlist}
         onOpenChange={setShowWaitlist}
         searchData={{
-          location,
+          location: place?.label ?? "",
           checkIn,
           checkOut,
         }}

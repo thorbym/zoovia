@@ -65,6 +65,7 @@ The FK to organisations is always `org_id`, never `kennel_id`.
 - `user_profiles` has no `role` column, `organisations` has no `notify_*` columns, `booking_requests` has no `contact_opt_in` column. Don't reintroduce them without a schema change.
 - `organisations.postcode` is `not null`. `scripts/seed-organisations.ts` upserts in batches of 100, so one blank postcode fails the *whole batch* — blanks are filtered out with a warning before batching. Seeded from `scripts/data/kennels.csv` (gitignored, 1,222 rows).
 - `schema.sql` is a full drop-and-recreate reset, safe only against an empty database. The database has had real data since 2026-08-19, so schema changes need an additive migration in `supabase/migrations/`, run by hand in the Supabase SQL Editor. Keep `schema.sql` in sync as the target state for fresh environments.
+- `/kennels` location search takes structured `lat`/`lng`/`label` from `components/location-picker.tsx`, never free text — the search box's visible text is only a label and is never re-parsed. Don't wire a "use my location" or autocomplete flow to just write a display string into a text field and let a server-side parser figure it out; that was the 2026-08-20 bug (see `DECISIONS.md`). `?q=` on `/kennels` still works but only as a fallback for old bookmarked links.
 
 ## 9) Commands & known gaps
 `pnpm i` · `pnpm dev` · `pnpm test` · `pnpm test:integration` · `pnpm test:e2e` · `pnpm lint`
