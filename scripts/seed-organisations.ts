@@ -110,9 +110,31 @@ async function main() {
 
   for (let i = 0; i < organisations.length; i += BATCH) {
     const batch = organisations.slice(i, i + BATCH)
+
+    // If the CSV's postcode for an existing row differs from what's stored,
+    // the coordinates we geocoded from the old postcode are stale — null
+    // them out so backfillOrganisationCoordinates re-geocodes on this run.
+    const { data: existing, error: fetchError } = await supabase
+      .from("organisations")
+      .select("slug, postcode")
+      .in("slug", batch.map((o) => o.slug))
+
+    if (fetchError) {
+      console.error(`Batch ${i / BATCH + 1} fetch error:`, fetchError.message)
+    }
+    const existingPostcodeBySlug = new Map((existing ?? []).map((o) => [o.slug, o.postcode]))
+
+    const batchWithResets = batch.map((org) => {
+      const existingPostcode = existingPostcodeBySlug.get(org.slug)
+      if (existingPostcode !== undefined && existingPostcode !== org.postcode) {
+        return { ...org, latitude: null, longitude: null }
+      }
+      return org
+    })
+
     const { error } = await supabase
       .from("organisations")
-      .upsert(batch, { onConflict: "slug", ignoreDuplicates: false })
+      .upsert(batchWithResets, { onConflict: "slug", ignoreDuplicates: false })
 
     if (error) {
       console.error(`Batch ${i / BATCH + 1} error:`, error.message)
