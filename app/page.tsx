@@ -6,12 +6,12 @@ import type { google } from "googlemaps"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent } from "@/components/ui/card"
 import { WaitlistModal } from "@/components/waitlist-modal"
 import { KennelOwnerModal } from "@/components/kennel-owner-modal"
 import { LocationPicker, type PickedLocation } from "@/components/location-picker"
+import { DateRangePicker } from "@/components/date-range-picker"
 import { MapPin, Calendar, Shield, Clock, Heart, Star, ArrowRight } from "lucide-react"
 
 export default function HomePage() {
@@ -20,73 +20,24 @@ export default function HomePage() {
   const [locationError, setLocationError] = useState(false)
   const [checkIn, setCheckIn] = useState("")
   const [checkOut, setCheckOut] = useState("")
+  const [datesError, setDatesError] = useState(false)
   const [showWaitlist, setShowWaitlist] = useState(false)
   const [showKennelOwnerModal, setShowKennelOwnerModal] = useState(false)
 
-  const today = new Date().toISOString().split("T")[0]
-
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
+    let hasError = false
     if (!place) {
       setLocationError(true)
-      return
+      hasError = true
     }
-    router.push(`/kennels?lat=${place.lat}&lng=${place.lng}&label=${encodeURIComponent(place.label)}`)
-  }
-
-  /*
-  const handleDateFocus = (e: React.FocusEvent<HTMLInputElement>) => {
-    e.target.type = "date"
-    e.target.min = today
-  }
-
-  const handleDateBlur = (e: React.FocusEvent<HTMLInputElement>) => {
-    e.target.type = "text"
-  }
-
-  const formatDateDisplay = (dateString: string) => {
-    if (!dateString) return ""
-    const date = new Date(dateString)
-    const day = date.getDate().toString().padStart(2, "0")
-    const month = (date.getMonth() + 1).toString().padStart(2, "0")
-    const year = date.getFullYear()
-    return `${day}/${month}/${year}`
-  }
-
-  const handleCheckInChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value
-    setCheckIn(value)
-    if (e.target.type === "date" && value) {
-      const checkOutInput = document.getElementById("checkout") as HTMLInputElement
-      if (checkOutInput && checkOutInput.type === "date") {
-        checkOutInput.min = value
-      }
-      setTimeout(() => {
-        if (e.target.type === "text") {
-          setCheckIn(formatDateDisplay(value))
-        }
-      }, 100)
+    if (!checkIn || !checkOut) {
+      setDatesError(true)
+      hasError = true
     }
+    if (hasError) return
+    router.push(`/kennels?lat=${place!.lat}&lng=${place!.lng}&label=${encodeURIComponent(place!.label)}`)
   }
-
-  const handleCheckOutChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value
-    setCheckOut(value)
-    if (e.target.type === "date" && value) {
-      setTimeout(() => {
-        if (e.target.type === "text") {
-          setCheckOut(formatDateDisplay(value))
-        }
-      }, 100)
-    }
-  }
-
-  const handleCheckOutFocus = (e: React.FocusEvent<HTMLInputElement>) => {
-    e.target.type = "date"
-    const minDate = checkIn && checkIn.includes("/") ? checkIn.split("/").reverse().join("-") : today
-    e.target.min = minDate
-  }
-*/
 
   return (
     <div className="min-h-screen bg-background">
@@ -148,43 +99,24 @@ export default function HomePage() {
                       <p className="text-sm text-destructive">Select a location from the suggestions list.</p>
                     )}
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="checkin" className="flex items-center gap-2 font-medium text-foreground">
+                  <div className="space-y-2 md:col-span-2">
+                    <Label htmlFor="dates" className="flex items-center gap-2 font-medium text-foreground">
                       <Calendar className="w-4 h-4 text-accent" />
-                      Check-in Date
+                      Check-in &amp; Check-out
                     </Label>
-                    <Input
-                      id="checkin"
-                      type="date"
-                      placeholder="Select check-in date"
-                      value={checkIn}
-                      min={today}
-                      onChange={(e) => setCheckIn(e.target.value)}
-                      //onChange={handleCheckInChange}
-                      //onFocus={handleDateFocus}
-                      //onBlur={handleDateBlur}
-                      required
-                      className="border-2 border-border focus:border-accent transition-colors"
+                    <DateRangePicker
+                      id="dates"
+                      checkIn={checkIn}
+                      checkOut={checkOut}
+                      onChange={(value) => {
+                        setCheckIn(value.checkIn)
+                        setCheckOut(value.checkOut)
+                        if (value.checkIn && value.checkOut) setDatesError(false)
+                      }}
                     />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="checkout" className="flex items-center gap-2 font-medium text-foreground">
-                      <Calendar className="w-4 h-4 text-accent" />
-                      Check-out Date
-                    </Label>
-                    <Input
-                      id="checkout"
-                      type="date"
-                      placeholder="Select check-out date"
-                      value={checkOut}
-                      min={!checkIn ? today : checkIn}
-                      onChange={(e) => setCheckOut(e.target.value)}
-                      //onChange={handleCheckOutChange}
-                      //onFocus={handleCheckOutFocus}
-                      //onBlur={handleDateBlur}
-                      required
-                      className="border-2 border-border focus:border-accent transition-colors"
-                    />
+                    {datesError && (
+                      <p className="text-sm text-destructive">Select a check-in and check-out date.</p>
+                    )}
                   </div>
                 </div>
                 <Button
