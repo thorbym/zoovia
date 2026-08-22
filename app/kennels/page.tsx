@@ -103,6 +103,7 @@ export default async function KennelsPage({
 
         {isLocationSearch ? (
           <KennelResultsList
+            key={resolvedLocation ? `${resolvedLocation.latitude},${resolvedLocation.longitude}` : "none"}
             initialResults={results}
             total={total}
             location={resolvedLocation ? { lat: resolvedLocation.latitude, lng: resolvedLocation.longitude } : null}
