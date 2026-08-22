@@ -2,6 +2,7 @@ import fs from "fs"
 import path from "path"
 import { createClient } from "@supabase/supabase-js"
 import { backfillOrganisationCoordinates } from "./lib/geocode"
+import { normaliseName } from "./lib/normalise-name"
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -70,7 +71,7 @@ async function main() {
       return true
     })
     .map((row) => {
-      const name = row.name.trim()
+      const name = normaliseName(row.name.trim())
       const locality = (row.addressLocality ?? "").trim()
       let slug = slugify(name, locality)
 

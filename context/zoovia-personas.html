@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Zoovia — Core User Personas</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    background: #f4f3ef;
+    color: #0b0b0b;
+    padding: 48px 24px;
+    line-height: 1.5;
+  }
+
+  .page-header {
+    max-width: 960px;
+    margin: 0 auto 48px;
+  }
+
+  .page-header h1 {
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+  }
+
+  .page-header p {
+    color: #52514e;
+    margin-top: 6px;
+    font-size: 15px;
+  }
+
+  .section {
+    max-width: 960px;
+    margin: 0 auto 48px;
+  }
+
+  .section-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: #898781;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #e1e0d9;
+  }
+
+  .persona-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+
+  @media (max-width: 700px) {
+    .persona-grid { grid-template-columns: 1fr; }
+  }
+
+  .card {
+    background: #fcfcfb;
+    border: 1px solid #e1e0d9;
+    border-radius: 12px;
+    overflow: hidden;
+  }
+
+  .card-header {
+    padding: 24px 24px 20px;
+    border-bottom: 1px solid #f0efec;
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+  }
+
+  .avatar {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    flex-shrink: 0;
+  }
+
+  .avatar-pat   { background: #fef3c7; }
+  .avatar-gary  { background: #dbeafe; }
+  .avatar-anna  { background: #fce7f3; }
+  .avatar-frank { background: #dcfce7; }
+
+  .card-header-text h2 {
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+  }
+
+  .card-header-text .tagline {
+    font-size: 13px;
+    color: #52514e;
+    margin-top: 2px;
+  }
+
+  .tag {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 999px;
+    margin-top: 6px;
+    letter-spacing: 0.3px;
+  }
+
+  .tag-operator { background: #ede9fe; color: #4a3aa7; }
+  .tag-owner    { background: #dcfce7; color: #14532d; }
+
+  .card-body {
+    padding: 20px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+
+  .section-title {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: #898781;
+    margin-bottom: 6px;
+  }
+
+  .situation {
+    font-size: 14px;
+    color: #0b0b0b;
+    line-height: 1.6;
+  }
+
+  .pain-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .pain-list li {
+    font-size: 13.5px;
+    padding-left: 16px;
+    position: relative;
+    color: #0b0b0b;
+    line-height: 1.5;
+  }
+
+  .pain-list li::before {
+    content: "·";
+    position: absolute;
+    left: 4px;
+    color: #898781;
+    font-weight: 700;
+  }
+
+  .quotes {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .quote {
+    font-size: 13.5px;
+    font-style: italic;
+    color: #52514e;
+    padding: 8px 12px;
+    background: #f4f3ef;
+    border-radius: 6px;
+    border-left: 3px solid #e1e0d9;
+    line-height: 1.5;
+  }
+
+  .trigger-box {
+    background: #fefce8;
+    border: 1px solid #fef08a;
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 13.5px;
+    color: #713f12;
+    line-height: 1.5;
+  }
+
+  .trigger-box strong {
+    display: block;
+    font-size: 10px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: #a16207;
+    margin-bottom: 3px;
+  }
+
+  .pitch-box {
+    background: #0b0b0b;
+    border-radius: 8px;
+    padding: 12px 14px;
+    font-size: 14px;
+    color: #ffffff;
+    font-weight: 500;
+    line-height: 1.5;
+  }
+
+  .pitch-box strong {
+    display: block;
+    font-size: 10px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: #898781;
+    margin-bottom: 4px;
+  }
+
+  .demo-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+  }
+
+  .chip {
+    font-size: 12px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    background: #f0efec;
+    color: #52514e;
+    border: 1px solid #e1e0d9;
+  }
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <h1>Zoovia — Core User Personas</h1>
+  <p>Synthesised from market research, competitor reviews, and kennel owner forums. August 2026.</p>
+</div>
+
+<!-- OPERATORS -->
+<div class="section">
+  <div class="section-label">Kennel Operators — the supply side</div>
+  <div class="persona-grid">
+
+    <!-- PAT -->
+    <div class="card">
+      <div class="card-header">
+        <div class="avatar avatar-pat">👩‍🌾</div>
+        <div class="card-header-text">
+          <h2>Pat Webb</h2>
+          <div class="tagline">Meadow View Kennels, Shropshire · 14 runs · 22 years</div>
+          <span class="tag tag-operator">The Veteran</span>
+          <div class="demo-chips">
+            <span class="chip">58 years old</span>
+            <span class="chip">Sole trader</span>
+            <span class="chip">4-star AAL</span>
+            <span class="chip">No staff</span>
+          </div>
+        </div>
+      </div>
+      <div class="card-body">
+
+        <div>
+          <div class="section-title">How she operates today</div>
+          <div class="situation">Leather-bound diary she calls "the Bible." Excel for income tracking. WhatsApp for updates to worried owners. Takes deposits by bank transfer — checks her banking app twice a day to match incoming transfers against diary entries. Vaccination books in a lever-arch folder on the reception desk. Been doing it this way for two decades and it works — mostly.</div>
+        </div>
+
+        <div>
+          <div class="section-title">Pain points</div>
+          <ul class="pain-list">
+            <li>Enquiry chaos at Christmas booking season — phone, Facebook Messenger, website form, and walk-ins all arriving at once, no way to keep track</li>
+            <li>Chasing deposits manually — sending reminder texts, checking the banking app, updating the diary, one by one</li>
+            <li>Finding a vaccination record at 7am drop-off when the folder is at the back of the office</li>
+            <li>Council inspection anxiety — knows she should have better records but the current system is all in her head</li>
+          </ul>
+        </div>
+
+        <div>
+          <div class="section-title">In her own words</div>
+          <div class="quotes">
+            <div class="quote">"I've been doing this for 20 years. I don't need a computer telling me which dog goes in which run."</div>
+            <div class="quote">"I heard of a kennel that lost all their Christmas bookings when their software crashed. No thank you."</div>
+            <div class="quote">"My busy season is so hectic I can't stop to learn something new. It has to just work."</div>
+          </div>
+        </div>
+
+        <div>
+          <div class="trigger-box">
+            <strong>Adoption trigger</strong>
+            A missed enquiry that cost her a booking, a compliance flag at inspection, or — most likely — a trusted peer kennel owner telling her they switched and it was fine. Trust travels through the local kennel network.
+          </div>
+        </div>
+
+        <div>
+          <div class="pitch-box">
+            <strong>Zoovia pitch to Pat</strong>
+            "Works exactly like your diary. Just doesn't sit on the counter, and the deposits chase themselves."
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- GARY -->
+    <div class="card">
+      <div class="card-header">
+        <div class="avatar avatar-gary">👨‍💼</div>
+        <div class="card-header-text">
+          <h2>Gary Patel</h2>
+          <div class="tagline">Paws &amp; Stay, Hertfordshire · 22 runs + daycare · 8 years</div>
+          <span class="tag tag-operator">The Grower</span>
+          <div class="demo-chips">
+            <span class="chip">41 years old</span>
+            <span class="chip">Ltd company</span>
+            <span class="chip">2 full-time staff</span>
+            <span class="chip">Ex-Revelation Pets</span>
+          </div>
+        </div>
+      </div>
+      <div class="card-body">
+
+        <div>
+          <div class="section-title">How he operates today</div>
+          <div class="situation">Expanded from 10 to 22 runs in 2022. Tried Revelation Pets for three years, abandoned it after two data loss incidents and a 60% price hike. Now running a bodged system: Calendly for booking requests, a Google Sheet for occupancy, WhatsApp group with staff, and his own head for everything else. Paying £60/mo for software he no longer fully trusts.</div>
+        </div>
+
+        <div>
+          <div class="section-title">Pain points</div>
+          <ul class="pain-list">
+            <li>Staff see different information to him — double-booked twice last year when a staff member confirmed a run he'd already allocated</li>
+            <li>Deposit tracking is a mess — each staff member manages it differently, he has no single view</li>
+            <li>Revenue leakage — extras like medication admin, extended stays, and additional walks are rarely billed consistently</li>
+            <li>Deep scepticism born from being burned before — won't adopt something new without proof it's reliable</li>
+          </ul>
+        </div>
+
+        <div>
+          <div class="section-title">In his own words</div>
+          <div class="quotes">
+            <div class="quote">"I don't mind paying if it actually works. I'm already paying for something that doesn't."</div>
+            <div class="quote">"My team need to be able to check things without ringing me at 7am."</div>
+            <div class="quote">"I've been burnt before. I need to see it working before I move everything across."</div>
+          </div>
+        </div>
+
+        <div>
+          <div class="trigger-box">
+            <strong>Adoption trigger</strong>
+            The next double-booking — or hitting the point where managing three systems takes more time than a proper tool would cost. Needs a free trial or a clear migration path from his current setup.
+          </div>
+        </div>
+
+        <div>
+          <div class="pitch-box">
+            <strong>Zoovia pitch to Gary</strong>
+            "One system your whole team works from. Every booking, deposit, and dog record in one place — and it doesn't go down."
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- DOG OWNERS -->
+<div class="section">
+  <div class="section-label">Dog Owners — the demand side</div>
+  <div class="persona-grid">
+
+    <!-- ANNA -->
+    <div class="card">
+      <div class="card-header">
+        <div class="avatar avatar-anna">👩‍💻</div>
+        <div class="card-header-text">
+          <h2>Anna Clarke</h2>
+          <div class="tagline">Marketing manager, Surrey · Cockapoo called Milo · First-time boarder</div>
+          <span class="tag tag-owner">The Anxious First-Timer</span>
+          <div class="demo-chips">
+            <span class="chip">34 years old</span>
+            <span class="chip">Pandemic dog owner</span>
+            <span class="chip">Boards 1–2x/year</span>
+          </div>
+        </div>
+      </div>
+      <div class="card-body">
+
+        <div>
+          <div class="section-title">Her current experience</div>
+          <div class="situation">Googled "dog kennels near Guildford." Found four websites — two with no prices listed, one phone number that rang out, one online form she filled in and didn't hear back from for three days. Eventually booked by phone after calling four places. Doesn't know if the kennel she chose is actually licensed. Deeply anxious about leaving Milo for the first time.</div>
+        </div>
+
+        <div>
+          <div class="section-title">Pain points</div>
+          <ul class="pain-list">
+            <li>Can't verify which kennels are legitimate — no easy way to check licence status or star rating</li>
+            <li>No prices visible upfront — has to enquire just to find out if she can afford it</li>
+            <li>Paper-based onboarding — asked to bring vaccination card to drop-off (forgot it, had to go back)</li>
+            <li>Zero contact during the stay — no photo, no update, no way to know Milo is okay without ringing and feeling like a nuisance</li>
+          </ul>
+        </div>
+
+        <div>
+          <div class="section-title">In her own words</div>
+          <div class="quotes">
+            <div class="quote">"I just want to know he's okay. One photo a day, that's all I need."</div>
+            <div class="quote">"I couldn't find any reviews I actually trusted. Google reviews could be anyone."</div>
+            <div class="quote">"How am I supposed to know if it's a proper licensed kennel? There's no way to check."</div>
+          </div>
+        </div>
+
+        <div>
+          <div class="trigger-box">
+            <strong>Adoption trigger</strong>
+            A kennel that shows its AAL licence and star rating on its listing, lets her complete Milo's profile digitally, and sends her a photo on day one. She will recommend Zoovia to every dog owner she knows — this audience is evangelical when trust is earned.
+          </div>
+        </div>
+
+        <div>
+          <div class="pitch-box">
+            <strong>Zoovia pitch to Anna</strong>
+            "See which kennels are licensed and rated. Book in minutes. Get a photo update every day."
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- FRANK -->
+    <div class="card">
+      <div class="card-header">
+        <div class="avatar avatar-frank">👨‍💼</div>
+        <div class="card-header-text">
+          <h2>Frank O'Brien</h2>
+          <div class="tagline">Sales director, Manchester · Two Labradors · 8–10 stays/year</div>
+          <span class="tag tag-owner">The Pragmatic Regular</span>
+          <div class="demo-chips">
+            <span class="chip">52 years old</span>
+            <span class="chip">Travels for work</span>
+            <span class="chip">Same kennel 6 years</span>
+          </div>
+        </div>
+      </div>
+      <div class="card-body">
+
+        <div>
+          <div class="section-title">His current experience</div>
+          <div class="situation">Has a trusted kennel he's used for six years. Books by WhatsApp message, pays by bank transfer. The kennel knows his dogs well — dietary requirements, that Barley is scared of other dogs at feeding time. The relationship works. But he has to book far in advance with no way to check availability without ringing, and he's occasionally caught short when his usual dates are already gone.</div>
+        </div>
+
+        <div>
+          <div class="section-title">Pain points</div>
+          <ul class="pain-list">
+            <li>No online availability — has to message or ring to check if dates are free, which he can't always do during the workday</li>
+            <li>Repeats the same dog info every visit — no stored profile, fills out the same form each time</li>
+            <li>Confirmations are WhatsApp threads — can't easily forward a booking reference to his PA or add to his calendar</li>
+            <li>Occasionally caught out — peak dates gone before he's got round to booking</li>
+          </ul>
+        </div>
+
+        <div>
+          <div class="section-title">In his own words</div>
+          <div class="quotes">
+            <div class="quote">"I just need to get it done quickly. I'm not fussed about the details."</div>
+            <div class="quote">"Why can't I just check availability online at 11 o'clock at night when I'm planning my trips?"</div>
+            <div class="quote">"I've been going there for years. They know the dogs. I'd just like the admin to be easier."</div>
+          </div>
+        </div>
+
+        <div>
+          <div class="trigger-box">
+            <strong>Adoption trigger</strong>
+            His kennel joins Zoovia and suddenly the availability is live, the booking takes two taps, and the confirmation lands in his inbox with a reference he can forward. He adopts immediately and without fanfare — and probably doesn't even think of it as a new product, just "the kennel got better."
+          </div>
+        </div>
+
+        <div>
+          <div class="pitch-box">
+            <strong>Zoovia pitch to Frank</strong>
+            "Check availability. Book in two taps. Your dogs' details are already there."
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</body>
+</html>
