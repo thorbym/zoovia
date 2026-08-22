@@ -1,8 +1,10 @@
 import Link from "next/link"
 import { MapPin } from "lucide-react"
 import { createSupabaseServerClient } from "@/lib/supabase/clients"
-import { resolveLocation, distanceInMiles, type ResolvedLocation } from "@/lib/geo/resolve-location"
+import { resolveLocation, type ResolvedLocation } from "@/lib/geo/resolve-location"
+import { KENNELS_SEARCH_PAGE_SIZE, searchKennelsByLocation } from "@/lib/kennels/search"
 import { KennelsSearchBar } from "@/components/kennels-search-bar"
+import { KennelResultsList } from "@/components/kennel-results-list"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 
@@ -41,36 +43,25 @@ export default async function KennelsPage({
 
   const hasCoords = lat !== null && lng !== null && !Number.isNaN(lat) && !Number.isNaN(lng)
   const displayQuery = label || q
-
-  const supabase = await createSupabaseServerClient()
+  const isLocationSearch = hasCoords || q.length > 0
 
   let results: (OrgRow & { distance?: number })[]
   let total: number
+  let resolvedLocation: ResolvedLocation | null = null
 
-  if (hasCoords || q) {
-    const location: ResolvedLocation | null = hasCoords
-      ? { latitude: lat as number, longitude: lng as number }
-      : await resolveLocation(q)
+  if (isLocationSearch) {
+    resolvedLocation = hasCoords ? { latitude: lat as number, longitude: lng as number } : await resolveLocation(q)
 
-    if (location) {
-      const { data } = await supabase
-        .from("organisations")
-        .select("id, name, slug, locality, region, postcode, latitude, longitude, claim_status")
-        .not("latitude", "is", null)
-
-      const withDistance = ((data ?? []) as OrgRow[]).map((org) => ({
-        ...org,
-        distance: distanceInMiles(location, { latitude: org.latitude!, longitude: org.longitude! }),
-      }))
-      withDistance.sort((a, b) => a.distance - b.distance)
-
-      total = withDistance.length
-      results = withDistance.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+    if (resolvedLocation) {
+      const searchResult = await searchKennelsByLocation(resolvedLocation, 0, KENNELS_SEARCH_PAGE_SIZE)
+      results = searchResult.results
+      total = searchResult.total
     } else {
       total = 0
       results = []
     }
   } else {
+    const supabase = await createSupabaseServerClient()
     const from = (page - 1) * PAGE_SIZE
     const to = from + PAGE_SIZE - 1
 
@@ -103,57 +94,64 @@ export default async function KennelsPage({
       </header>
 
       <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
-        {(hasCoords || q) && results.length === 0 && (
+        {isLocationSearch && results.length === 0 && (
           <p className="text-muted-foreground">
             We couldn&apos;t find &ldquo;{displayQuery}&rdquo; or any kennels near it. Try a UK postcode or town
             name.
           </p>
         )}
 
-        <div className="grid gap-4 sm:grid-cols-2">
-          {results.map((org) => (
-            <Link key={org.id} href={`/kennels/${org.slug}`}>
-              <Card className="h-full transition-shadow hover:shadow-md">
-                <CardHeader>
-                  <CardTitle className="flex items-start justify-between gap-2">
-                    <span>{org.name}</span>
-                    {org.claim_status === "unclaimed" && (
-                      <Badge variant="outline" className="shrink-0">
-                        Unclaimed
-                      </Badge>
-                    )}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                    <MapPin className="h-3.5 w-3.5 shrink-0" />
-                    {[org.locality, org.postcode].filter(Boolean).join(", ")}
-                  </p>
-                  {typeof org.distance === "number" && (
-                    <p className="mt-1 text-sm text-muted-foreground">{org.distance.toFixed(1)} miles away</p>
-                  )}
-                </CardContent>
-              </Card>
-            </Link>
-          ))}
-        </div>
+        {isLocationSearch ? (
+          <KennelResultsList
+            initialResults={results}
+            total={total}
+            location={resolvedLocation ? { lat: resolvedLocation.latitude, lng: resolvedLocation.longitude } : null}
+          />
+        ) : (
+          <>
+            <div className="grid gap-4 sm:grid-cols-2">
+              {results.map((org) => (
+                <Link key={org.id} href={`/kennels/${org.slug}`}>
+                  <Card className="h-full transition-shadow hover:shadow-md">
+                    <CardHeader>
+                      <CardTitle className="flex items-start justify-between gap-2">
+                        <span>{org.name}</span>
+                        {org.claim_status === "unclaimed" && (
+                          <Badge variant="outline" className="shrink-0">
+                            Unclaimed
+                          </Badge>
+                        )}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                        <MapPin className="h-3.5 w-3.5 shrink-0" />
+                        {[org.locality, org.postcode].filter(Boolean).join(", ")}
+                      </p>
+                    </CardContent>
+                  </Card>
+                </Link>
+              ))}
+            </div>
 
-        {totalPages > 1 && (
-          <div className="mt-8 flex items-center justify-center gap-4">
-            {page > 1 && (
-              <Link href={pageHref(page - 1)} className="text-sm text-foreground underline">
-                Previous
-              </Link>
+            {totalPages > 1 && (
+              <div className="mt-8 flex items-center justify-center gap-4">
+                {page > 1 && (
+                  <Link href={pageHref(page - 1)} className="text-sm text-foreground underline">
+                    Previous
+                  </Link>
+                )}
+                <span className="text-sm text-muted-foreground">
+                  Page {page} of {totalPages}
+                </span>
+                {page < totalPages && (
+                  <Link href={pageHref(page + 1)} className="text-sm text-foreground underline">
+                    Next
+                  </Link>
+                )}
+              </div>
             )}
-            <span className="text-sm text-muted-foreground">
-              Page {page} of {totalPages}
-            </span>
-            {page < totalPages && (
-              <Link href={pageHref(page + 1)} className="text-sm text-foreground underline">
-                Next
-              </Link>
-            )}
-          </div>
+          </>
         )}
       </main>
     </div>
