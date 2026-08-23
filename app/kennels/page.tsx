@@ -89,7 +89,10 @@ export default async function KennelsPage({
       <header className="border-b border-border bg-card">
         <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
           <h1 className="mb-4 text-2xl font-semibold text-balance text-foreground">Find a kennel</h1>
-          <KennelsSearchBar defaultValue={hasCoords ? { label: displayQuery, lat: lat as number, lng: lng as number } : null} />
+          <KennelsSearchBar
+            key={hasCoords ? `${lat},${lng},${displayQuery}` : "none"}
+            defaultValue={hasCoords ? { label: displayQuery, lat: lat as number, lng: lng as number } : null}
+          />
         </div>
       </header>
 
