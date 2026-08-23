@@ -31,10 +31,10 @@ KennelBooker and others force Stripe. UK operators want BACS, bank transfer, and
 ## Roadmap (sequential, no fixed dates)
 
 ### Phase 1 — Listings Foundation
-- Seed kennel profiles from public AAL register data (council-by-council)
+- Seed kennel profiles from public AAL register data (council-by-council — sourcing approach in `zoovia-contact-sourcing-plan.md`)
 - Basic unclaimed profile pages (name, location, licence number, star rating, website link)
 - Claim-your-listing flow for operators
-- "Claim your free listing" email campaign (batched, domain-warmed, GDPR-compliant)
+- Claim outreach, two tracks: an enquiry-triggered notification ("someone wants to book — claim your listing to reply") as the primary touch whenever an unclaimed operator gets a live enquiry, plus a batched "claim your free listing" email (domain-warmed, GDPR-compliant) as the fallback sweep for unclaimed operators nobody's enquired about yet — suppressed for anyone already reached via the triggered path
 - SEO and domain infrastructure
 
 **First contact with both sides. Zero revenue, low build cost.**
